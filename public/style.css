@@ -176,7 +176,27 @@ input[type="range"]::-moz-range-thumb {
   color: #fff;
   box-shadow: 0 10px 28px rgba(139,92,246,0.35);
   position: relative;
+  transition: background var(--transition), box-shadow var(--transition);
 }
+/* 播放/暂停状态视觉区分：播放中=更亮的紫粉渐变+外圈呼吸光环；暂停=暗一档+静态圈 */
+.ctrl.main[data-state="playing"] {
+  background: linear-gradient(135deg, #f472b6, #8b5cf6 60%, #6d5cff);
+  box-shadow: 0 10px 34px rgba(236,72,153,0.55);
+}
+.ctrl.main .state-ring {
+  position: absolute; inset: -5px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.55);
+  opacity: 0; pointer-events: none;
+}
+.ctrl.main[data-state="playing"] .state-ring {
+  opacity: 1;
+  animation: pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: .9; }
+  50% { transform: scale(1.12); opacity: .35; }
+}
+.ctrl.main[data-state="paused"] { filter: saturate(.75) brightness(.92); }
 .ctrl.main svg { width: 34px; height: 34px; fill: currentColor; }
 .ctrl.main:active { transform: scale(0.96); }
 .ctrl.main .spinner {

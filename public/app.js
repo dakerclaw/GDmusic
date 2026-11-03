@@ -282,9 +282,12 @@ function updatePlayBtn() {
     spin.hidden = false;
     iconPlay.hidden = true;
     iconPause.hidden = true;
+    btn.dataset.state = 'loading';
     return;
   }
   spin.hidden = true;
+  // 状态可视化：播放中=呼吸光环亮色；暂停=图标+暗色即可区分
+  btn.dataset.state = state.playing ? 'playing' : 'paused';
   if (state.playing) {
     iconPlay.hidden = true;
     iconPause.hidden = false;

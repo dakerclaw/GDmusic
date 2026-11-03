@@ -12,7 +12,7 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<link rel="stylesheet" href="/style.css?v=1.1.16">
+<link rel="stylesheet" href="/style.css?v=1.1.17">
 </head>
 <body>
 
@@ -77,10 +77,11 @@
       <button class="ctrl" id="btn-prev" aria-label="上一首" title="上一首">
         <svg><use href="#i-prev"/></svg>
       </button>
-      <button class="ctrl main" id="btn-play" aria-label="播放" title="播放">
+      <button class="ctrl main" id="btn-play" aria-label="播放" title="播放" data-state="paused">
         <svg class="icon-play"><use href="#i-play"/></svg>
         <svg class="icon-pause" hidden><use href="#i-pause"/></svg>
         <span class="spinner" hidden></span>
+        <span class="state-ring" aria-hidden="true"></span>
       </button>
       <button class="ctrl" id="btn-next" aria-label="下一首" title="下一首">
         <svg><use href="#i-next"/></svg>
@@ -155,6 +156,6 @@
 
 <audio id="audio" preload="metadata" playsinline></audio>
 
-<script src="/app.js?v=1.1.16" type="module"></script>
+<script src="/app.js?v=1.1.17" type="module"></script>
 </body>
 </html>
