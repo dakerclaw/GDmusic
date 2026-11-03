@@ -669,6 +669,7 @@ function showSetup() {
     .then((s) => {
       $('#setup-folders').value = (s.folderIds || []).join(', ');
       $('#setup-recursive').checked = s.recursive !== false;
+      $('#setup-code').placeholder = s.accessRequired ? '已启用（留空则不修改）' : '不启用';
       $('#setup-status').hidden = !s.serviceAccountEmail;
       if (s.serviceAccountEmail) {
         $('#setup-status').textContent = `当前服务账号：${s.serviceAccountEmail}；已配 ${s.folderIds.length} 个文件夹。留空 JSON 表示不修改密钥。`;
@@ -705,18 +706,22 @@ $('#setup-test').addEventListener('click', async () => {
 $('#setup-save').addEventListener('click', async () => {
   const sa = $('#setup-sa').value.trim();
   const folderIds = $('#setup-folders').value;
+  const accessCode = $('#setup-code').value.trim();
   const btn = $('#setup-save');
   btn.disabled = true;
   try {
     const res = await fetch('/api/setup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-access-code': localStorage.getItem('cm_code') || '' },
-      body: JSON.stringify({ serviceAccountJson: sa || undefined, folderIds, recursive: $('#setup-recursive').checked }),
+      body: JSON.stringify({ serviceAccountJson: sa || undefined, folderIds, accessCode, recursive: $('#setup-recursive').checked }),
     });
     const data = await res.json();
     if (!data.ok) { toast(data.error || '保存失败'); return; }
     toast('已保存，正在重新加载曲库…');
     $('#setup-sa').value = '';
+    $('#setup-code').value = '';
+    // 口令刚启用/变更：本机直接解锁，避免被自己挡在门外
+    if (accessCode) localStorage.setItem('cm_code', accessCode);
     hideSetup();
     $('#mode-badge').hidden = !data.demo;
     try {

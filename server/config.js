@@ -125,7 +125,8 @@ export function saveRuntimeConfig({ serviceAccountJson, folderIds, accessCode, r
   }
 
   state.saved.folderIds = ids;
-  state.saved.accessCode = String(accessCode ?? '').trim();
+  // accessCode 未提供时保留现有值（undefined 不清空）
+  state.saved.accessCode = accessCode === undefined ? String(prevCode ?? '') : String(accessCode).trim();
   state.saved.recursive = recursive !== false;
   persistSaved();
 
