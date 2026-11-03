@@ -222,16 +222,51 @@ app.get('/api/tracks/:id/cover', wrap(async (req, res) => {
 
 /* ---------------- 音频流（支持 Range，可拖动进度条） ---------------- */
 
+// 开放式 Range（bytes=0-）改写为有限分段：弱网/代理环境长响应易被掐断，
+// 分段 206 让浏览器自动逐段续传，可靠性远高于一次性 12MB 响应
+const STREAM_CHUNK = Number(process.env.STREAM_CHUNK || 2 * 1024 * 1024);
+
+function clampRange(rangeHeader, size) {
+  if (!rangeHeader) return null; // 无 Range → 下面按全量分段处理
+  const m = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim());
+  if (!m) return null;
+  let start = m[1] === '' ? 0 : parseInt(m[1], 10);
+  let end = m[2] === '' ? -1 : parseInt(m[2], 10);
+  if (Number.isNaN(start) || Number.isNaN(end)) return null;
+  if (end === -1 || end >= size) end = size - 1;
+  if (start > end) return 'invalid';
+  // 开放式结尾或超长段 → 截断为 CHUNK 大小
+  if (m[2] === '' || end - start + 1 > STREAM_CHUNK) end = Math.min(start + STREAM_CHUNK - 1, size - 1);
+  return { start, end };
+}
+
 app.get('/api/stream/:id', wrap(async (req, res) => {
   const { id } = req.params;
   const prov = currentProvider();
   const info = await prov.getFileInfo(id);
   if (!info) return res.status(404).json({ error: '音频不存在' });
 
-  const range = req.headers.range;
+  const size = info.size || 0;
+  let range = req.headers.range;
+  let start = 0;
+  let end = size ? size - 1 : -1;
+
+  const clamped = clampRange(range, size);
+  if (clamped === 'invalid') {
+    return res.status(416).json({ error: 'Range 超出文件大小' });
+  }
+  if (clamped) {
+    ({ start, end } = clamped);
+  } else if (range && !clamped) {
+    // 无法解析的 Range 头：忽略，按全量处理
+  }
+
+  const isPartial = Boolean(range) && clamped !== null;
+  const upstreamRange = `bytes=${start}-${end}`;
+
   let upstream;
   try {
-    upstream = await prov.openMedia(id, range);
+    upstream = await prov.openMedia(id, upstreamRange);
   } catch (err) {
     console.error(`[stream] ${id} 上游打开失败:`, err.message);
     return res.status(502).json({ error: `上游读取失败：${err.message}` });
@@ -250,15 +285,13 @@ app.get('/api/stream/:id', wrap(async (req, res) => {
       .json({ error: `无法读取音频 (${upstream.status})`, detail: detail.slice(0, 300) });
   }
 
-  res.status(upstream.status);
-  const pass = ['content-type', 'content-length', 'content-range', 'last-modified', 'etag'];
-  for (const key of pass) {
-    const value = upstream.headers.get(key);
-    if (value) res.setHeader(key, value);
-  }
-  if (!res.getHeader('Content-Type')) res.setHeader('Content-Type', browserMime(info.name, info.mimeType));
-  if (!res.getHeader('Content-Length') && upstream.status === 200 && info.size) {
-    res.setHeader('Content-Length', String(info.size));
+  res.status(isPartial ? 206 : 200);
+  res.setHeader('Content-Type', browserMime(info.name, info.mimeType));
+  if (isPartial) {
+    res.setHeader('Content-Range', `bytes ${start}-${end}/${size}`);
+    res.setHeader('Content-Length', String(end - start + 1));
+  } else if (size) {
+    res.setHeader('Content-Length', String(size));
   }
   res.setHeader('Accept-Ranges', 'bytes');
   res.setHeader('Cache-Control', 'private, max-age=3600');
