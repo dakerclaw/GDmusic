@@ -62,23 +62,22 @@ app.get('/api/setup/status', (req, res) => {
 
 app.post('/api/setup', express.json({ limit: '1mb' }), wrap(async (req, res) => {
   const { serviceAccountJson, folderIds, accessCode, recursive } = req.body || {};
-  const idsInput = Array.isArray(folderIds) ? folderIds : String(folderIds || '').split(',');
-  if (!config.credentials && !serviceAccountJson && !(config.folderIds.length)) {
-    // 从演示模式首次配置：SA 必填
-    if (!serviceAccountJson) return res.status(400).json({ ok: false, error: '请粘贴服务账号 JSON 密钥' });
+  // 首次配置（当前无凭证无文件夹）：SA 必填
+  if (!config.credentials && !serviceAccountJson && !config.folderIds.length) {
+    return res.status(400).json({ ok: false, error: '请粘贴服务账号 JSON 密钥' });
   }
   try {
     const changed = saveRuntimeConfig({
       serviceAccountJson: serviceAccountJson ?? null,
-      folderIds: idsInput,
+      folderIds,
       accessCode,
       recursive,
     });
     if (changed.credentials || changed.folderIds) {
       drive.resetAuth();
-      cache = { at: 0, tracks: [] }; // 清曲库缓存，下次请求重建
-      config.demo = !config.credentials || config.folderIds.length === 0;
+      cache = { at: 0, tracks: [] }; // 清曲库缓存，下次请求重建（元数据按文件 ID 键控，无需清）
     }
+    config.demo = !config.credentials || config.folderIds.length === 0;
     res.json({ ok: true, demo: config.demo, serviceAccountEmail: config.serviceAccountEmail, folderIds: config.folderIds });
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message });

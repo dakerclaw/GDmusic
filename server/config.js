@@ -102,7 +102,7 @@ function persistSaved() {
  * 热生效：写盘后重置 drive.js 的 auth 客户端
  */
 export function saveRuntimeConfig({ serviceAccountJson, folderIds, accessCode, recursive }) {
-  const prevFolderIds = state.saved.folderIds;
+  const prevIds = Array.isArray(state.saved.folderIds) ? state.saved.folderIds : [];
   const prevCode = state.saved.accessCode;
 
   if (serviceAccountJson != null) {
@@ -111,11 +111,17 @@ export function saveRuntimeConfig({ serviceAccountJson, folderIds, accessCode, r
     state.saved._sa = sa;
   }
 
-  const ids = (folderIds ?? state.saved.folderIds ?? [])
-    .map((s) => String(s).trim())
-    .filter(Boolean);
-  if (!ids.length && serviceAccountJson != null) {
-    throw new Error('至少填写一个文件夹 ID');
+  // folderIds 未提供（undefined/空白）时保留现有配置，不清空
+  let ids;
+  if (folderIds == null) {
+    ids = prevIds;
+  } else {
+    const raw = Array.isArray(folderIds) ? folderIds : String(folderIds).split(',');
+    const cleaned = raw.map((s) => String(s).trim()).filter(Boolean);
+    if (!cleaned.length && prevIds.length) {
+      throw new Error('文件夹 ID 不能为空；如需清空请先移除服务账号密钥');
+    }
+    ids = cleaned;
   }
 
   state.saved.folderIds = ids;
@@ -128,7 +134,11 @@ export function saveRuntimeConfig({ serviceAccountJson, folderIds, accessCode, r
   if (accessCode !== undefined) config.accessCode = state.saved.accessCode;
   if (recursive !== undefined) config.recursive = recursive !== false;
   config.serviceAccountEmail = state.saved._sa?.client_email || null;
-  config.changed = { credentials: serviceAccountJson != null, folderIds: ids.join() !== prevFolderIds.join(), accessCode: state.saved.accessCode !== prevCode };
+  config.changed = {
+    credentials: serviceAccountJson != null,
+    folderIds: ids.join() !== prevIds.join(),
+    accessCode: state.saved.accessCode !== prevCode,
+  };
   return config.changed;
 }
 

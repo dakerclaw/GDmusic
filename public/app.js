@@ -37,7 +37,10 @@ async function api(path, opts = {}) {
       throw new Error('需要访问口令');
     }
   }
-  if (!res.ok) throw new Error(`请求失败 (${res.status})`);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `请求失败 (${res.status})`);
+  }
   if (res.status === 204) return null;
   return res.json();
 }
@@ -621,8 +624,12 @@ $('#setup-save').addEventListener('click', async () => {
     $('#setup-sa').value = '';
     hideSetup();
     $('#mode-badge').hidden = !data.demo;
-    await loadTracks(true);
-    toast(`已连接，共 ${state.tracks.length} 首`);
+    try {
+      await loadTracks(true);
+      toast(`已连接，共 ${state.tracks.length} 首`);
+    } catch (loadErr) {
+      toast(`已保存，但曲库加载失败：${loadErr.message}`);
+    }
   } catch (err) {
     toast(err.message || '保存失败');
   } finally {

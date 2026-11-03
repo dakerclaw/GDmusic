@@ -80,6 +80,7 @@ async function listChildren(folderId) {
 /** 递归收集所有音频文件 */
 export async function listTracks() {
   const found = [];
+  const errors = [];
   const seenFolders = new Set();
   const queue = config.folderIds.map((id) => ({ id, depth: 0, path: '' }));
 
@@ -92,8 +93,8 @@ export async function listTracks() {
     try {
       children = await listChildren(id);
     } catch (err) {
-      if (depth === 0) throw err; // 根目录失败要明确报错
-      console.warn(`[drive] 跳过子目录 ${id}：${err.message}`);
+      if (depth === 0) errors.push(`根文件夹 ${id}：${err.message}`);
+      else console.warn(`[drive] 跳过子目录 ${id}：${err.message}`);
       continue;
     }
 
@@ -113,6 +114,10 @@ export async function listTracks() {
         });
       }
     }
+  }
+
+  if (!found.length && errors.length) {
+    throw new Error(errors.join('；'));
   }
 
   return found;
