@@ -325,14 +325,33 @@ function bindEvents() {
   audio.addEventListener('playing', () => { state.loading = false; updatePlayBtn(); clearLoadTimeout(); });
   audio.addEventListener('ended', () => next(true));
   // 只对「已设置 src 且非空切换」报错；src 清空/替换瞬间的误报忽略
+  let errorStreak = 0; // 连续失败计数（自动跳歌用，避免整张不支持的列表无限循环）
   audio.addEventListener('error', () => {
     if (switching || !audio.src) return;
     state.loading = false;
     state.playing = false;
     updatePlayBtn();
     clearLoadTimeout();
+    const code = audio.error?.code;
+    // 解码失败（格式不支持）→ 自动跳下一首；其他错误 → 报错停住
+    if (code === 4) {
+      errorStreak++;
+      const skipMsg = `格式不支持，已跳过：${state.tracks[state.index]?.title || state.tracks[state.index]?.name || '未知曲目'}`;
+      toast(skipMsg);
+      console.warn('[audio]', skipMsg, '| 连续第', errorStreak, '首');
+      if (errorStreak >= state.tracks.length) {
+        toast('整个曲库的格式都无法在此浏览器播放，已停止');
+        errorStreak = 0;
+        return;
+      }
+      setTimeout(() => next(true), 600); // 稍等让 toast 显示
+      return;
+    }
+    errorStreak = 0;
     probeStreamError(audio.src);
   });
+  // 成功起播时清零连续失败计数
+  audio.addEventListener('playing', () => { errorStreak = 0; });
   audio.addEventListener('timeupdate', () => {
     if (dragTimer) return;
     const p = audio.duration ? audio.currentTime / audio.duration : 0;
@@ -594,7 +613,8 @@ function clearLoadTimeout() {
 }
 
 /** 流播放失败时回读接口，显示服务器返回的真实错误 */
-async function probeStreamError(src) {  let msg = '播放失败：无法读取音频';
+async function probeStreamError(src) {
+  let msg = '播放失败：无法读取音频';
   try {
     const saved = localStorage.getItem('cm_code');
     const res = await fetch(src, {
