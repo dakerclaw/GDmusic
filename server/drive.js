@@ -159,13 +159,19 @@ export async function getFileInfo(fileId) {
   };
 }
 
-/** 打开音频流，透传 Range 以便拖动进度条 */
+/** 打开音频流，透传 Range 以便拖动进度条；429/5xx 自动重试一次 */
 export async function openMedia(fileId, range) {
   const token = await getToken();
   const url = `${DRIVE_API}/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`;
   const headers = { Authorization: `Bearer ${token}` };
   if (range) headers.Range = range;
-  return fetch(url, { headers });
+  let res = await fetch(url, { headers });
+  if ((res.status === 429 || res.status >= 500) && range === undefined) {
+    // 完整流被限流：等 800ms 重试一次（带 Range 的分段请求让浏览器自己重试）
+    await new Promise((r) => setTimeout(r, 800));
+    res = await fetch(url, { headers });
+  }
+  return res;
 }
 
 /** 读取文件开头若干字节，用于解析 ID3 标签和内嵌封面 */

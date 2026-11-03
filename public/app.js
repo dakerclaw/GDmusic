@@ -159,9 +159,17 @@ function playIndex(idx) {
   state.playing = false;
   updatePlayBtn();
 
-  audio.src = `/api/stream/${track.id}`;
+  // 清掉旧播放任务，避免切歌竞态误报 error
+  switching = true;
+  audio.pause();
+  audio.removeAttribute('src');
   audio.load();
-  audio.play().catch(() => {});
+  setTimeout(() => { switching = false; }, 50);
+
+  const url = `/api/stream/${track.id}`;
+  audio.src = url;
+  audio.load();
+  audio.play().catch(() => { /* 自动播放限制：等用户点播放键 */ });
 
   setCover(null);
   if (track.hasCover) loadCover(track.id);
@@ -316,11 +324,13 @@ function bindEvents() {
   audio.addEventListener('waiting', () => { state.loading = true; updatePlayBtn(); });
   audio.addEventListener('canplay', () => { state.loading = false; updatePlayBtn(); });
   audio.addEventListener('ended', () => next(true));
+  // 只对「已设置 src 且非空切换」报错；src 清空/替换瞬间的误报忽略
+  let switching = false;
   audio.addEventListener('error', () => {
+    if (switching || !audio.src) return;
     state.loading = false;
     state.playing = false;
     updatePlayBtn();
-    // 回读流接口的真实错误（浏览器把 JSON 错误页当音频解码才报"格式不支持"）
     probeStreamError(audio.src);
   });
   audio.addEventListener('timeupdate', () => {
