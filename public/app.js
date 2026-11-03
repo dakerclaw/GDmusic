@@ -244,28 +244,18 @@ function updateMeta() {
 }
 
 function setCover(url) {
-  const img = $('#cover-img');
-  const shell = $('#cover-shell');
+  // 封面区块已移除；保留函数避免调用处报错。背景图清理仍执行。
   if (!url) {
-    img.src = '';
-    img.hidden = true;
     const bg = $('#bg');
     const old = bg.querySelector('img');
     if (old) old.remove();
-    shell.classList.remove('playing');
-    return;
   }
-  img.src = url;
-  img.onload = () => { img.hidden = false; };
 }
 
 function loadCover(id) {
+  // 封面区块已移除：仅更新背景模糊图（若需要），不再操作封面元素
   const img = new Image();
   img.onload = () => {
-    $('#cover-img').src = img.src;
-    $('#cover-img').hidden = false;
-    $('#cover-shell').classList.add('playing');
-    // 背景模糊封面
     const bg = $('#bg');
     let bgImg = bg.querySelector('.bg-img');
     if (!bgImg) { bgImg = document.createElement('img'); bgImg.className = 'bg-img'; }
@@ -315,13 +305,11 @@ function bindEvents() {
     state.playing = true;
     state.loading = false;
     updatePlayBtn();
-    $('#cover-shell').classList.add('playing');
     requestWakeLock();
   });
   audio.addEventListener('pause', () => {
     state.playing = false;
     updatePlayBtn();
-    $('#cover-shell').classList.remove('playing');
     releaseWakeLock();
   });
   audio.addEventListener('waiting', () => { state.loading = true; updatePlayBtn(); armLoadTimeout(); });
