@@ -710,12 +710,10 @@ $('#setup-save').addEventListener('click', async () => {
 });
 
 /* ---------- 工具 ---------- */
-/** SVG use 兼容写法：旧移动浏览器只认 xlink:href，新标准用 href */
 function setUseHref(el, id) {
   const use = el.querySelector('use');
   if (!use) return;
   use.setAttribute('href', id);
-  use.setAttribute('xlink:href', id);
 }
 function formatTime(sec) {
   if (!isFinite(sec) || sec < 0) return '0:00';
