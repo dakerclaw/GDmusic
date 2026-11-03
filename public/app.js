@@ -169,6 +169,7 @@ function playIndex(idx) {
   const url = `/api/stream/${track.id}`;
   audio.src = url;
   audio.load();
+  armLoadTimeout();
   audio.play().catch(() => { /* 自动播放限制：等用户点播放键 */ });
 
   setCover(null);
@@ -321,8 +322,9 @@ function bindEvents() {
     $('#cover-shell').classList.remove('playing');
     releaseWakeLock();
   });
-  audio.addEventListener('waiting', () => { state.loading = true; updatePlayBtn(); });
-  audio.addEventListener('canplay', () => { state.loading = false; updatePlayBtn(); });
+  audio.addEventListener('waiting', () => { state.loading = true; updatePlayBtn(); armLoadTimeout(); });
+  audio.addEventListener('canplay', () => { state.loading = false; updatePlayBtn(); clearLoadTimeout(); });
+  audio.addEventListener('playing', () => { state.loading = false; updatePlayBtn(); clearLoadTimeout(); });
   audio.addEventListener('ended', () => next(true));
   // 只对「已设置 src 且非空切换」报错；src 清空/替换瞬间的误报忽略
   let switching = false;
@@ -331,6 +333,7 @@ function bindEvents() {
     state.loading = false;
     state.playing = false;
     updatePlayBtn();
+    clearLoadTimeout();
     probeStreamError(audio.src);
   });
   audio.addEventListener('timeupdate', () => {
@@ -565,9 +568,30 @@ function showGate() {
   $('#gate-input').focus();
 }
 
+/* ---------- 加载超时兜底：流挂起时 spinner 不该永远转 ---------- */
+const LOAD_TIMEOUT_MS = 30000;
+let loadTimer = null;
+
+function armLoadTimeout() {
+  clearLoadTimeout();
+  loadTimer = setTimeout(() => {
+    loadTimer = null;
+    if (!state.loading) return;
+    state.loading = false;
+    state.playing = false;
+    updatePlayBtn();
+    toast('加载超时：网络或上游响应慢，请点播放重试');
+    console.error('[audio] load timeout, src:', audio.src);
+    probeStreamError(audio.src);
+  }, LOAD_TIMEOUT_MS);
+}
+
+function clearLoadTimeout() {
+  if (loadTimer) { clearTimeout(loadTimer); loadTimer = null; }
+}
+
 /** 流播放失败时回读接口，显示服务器返回的真实错误 */
-async function probeStreamError(src) {
-  let msg = '播放失败：无法读取音频';
+async function probeStreamError(src) {  let msg = '播放失败：无法读取音频';
   try {
     const saved = localStorage.getItem('cm_code');
     const res = await fetch(src, {

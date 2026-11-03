@@ -41,6 +41,11 @@ async function apiFetch(url, { retry = true } = {}) {
   return res;
 }
 
+/** 带超时的 fetch（Node fetch 默认无超时，上游挂起会拖死请求） */
+async function fetchWithTimeout(url, options = {}, ms = 15000) {
+  return fetch(url, { ...options, signal: AbortSignal.timeout(ms) });
+}
+
 function isAudioFile(file) {
   if (!file || file.mimeType === FOLDER_MIME) return false;
   if (file.mimeType && file.mimeType.startsWith('audio/')) return true;
@@ -165,11 +170,20 @@ export async function openMedia(fileId, range) {
   const url = `${DRIVE_API}/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`;
   const headers = { Authorization: `Bearer ${token}` };
   if (range) headers.Range = range;
-  let res = await fetch(url, { headers });
+  let res;
+  try {
+    res = await fetchWithTimeout(url, { headers }, 15000);
+  } catch (err) {
+    throw new Error(`连接 Google 超时或被重置：${err.message}`);
+  }
   if ((res.status === 429 || res.status >= 500) && range === undefined) {
     // 完整流被限流：等 800ms 重试一次（带 Range 的分段请求让浏览器自己重试）
     await new Promise((r) => setTimeout(r, 800));
-    res = await fetch(url, { headers });
+    try {
+      res = await fetchWithTimeout(url, { headers }, 15000);
+    } catch (err) {
+      throw new Error(`连接 Google 超时或被重置：${err.message}`);
+    }
   }
   return res;
 }
