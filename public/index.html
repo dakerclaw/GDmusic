@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#08080c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="云音乐">
+<title>云音乐</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon.svg">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<svg class="sprite" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.14v13.72c0 .8.87 1.3 1.56.9l11.1-6.86a1.05 1.05 0 0 0 0-1.8L9.56 4.24A1.05 1.05 0 0 0 8 5.14z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4.5" width="4" height="15" rx="1.6"/><rect x="14" y="4.5" width="4" height="15" rx="1.6"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><rect x="5" y="5" width="2.6" height="14" rx="1.3"/><path d="M19 6.6v10.8c0 .9-1 1.4-1.7.9l-8-5.4a1.1 1.1 0 0 1 0-1.8l8-5.4c.7-.5 1.7 0 1.7.9z"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><rect x="16.4" y="5" width="2.6" height="14" rx="1.3"/><path d="M5 6.6v10.8c0 .9 1 1.4 1.7.9l8-5.4a1.1 1.1 0 0 0 0-1.8l-8-5.4C6 5.2 5 5.7 5 6.6z"/></symbol>
+  <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M16.5 4l2.1 2.1L4.6 20.1 6 21.5 20 7.5 22 9.5V4h-5.5zM6 4.5l3.4 3.4 1.4-1.4L7.4 3 6 4.5zM16.4 15.9l1.4-1.4 3.2 3.2L22 20h-5.5v-2.1l-.1-.1z" opacity=".95"/><path d="M14.9 10.3l1.4 1.4 3.7-3.7V12h2V6.5h-5.5v2h2.3l-3.9 3.8z"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></symbol>
+  <symbol id="i-repeat-one" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/><text x="12" y="15.4" font-size="7.6" font-weight="700" text-anchor="middle" fill="currentColor" font-family="system-ui,sans-serif">1</text></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M4 6h11v2H4zM4 11h11v2H4zM4 16h7v2H4zM17.5 12.5l4 2.5-4 2.5z"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M17.65 6.35A8 8 0 1 0 19.73 14h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path d="M10.5 3a7.5 7.5 0 0 1 5.9 12.14l4.23 4.23-1.41 1.41-4.23-4.23A7.5 7.5 0 1 1 10.5 3zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M12 3.2v9.9a3.6 3.6 0 1 0 2 3.24V7.4l5-1.1V3.6l-7 1.6z"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4z"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M6.5 19a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 17.7 10.2 4.4 4.4 0 0 1 17.4 19H6.5z"/></symbol>
+  <symbol id="i-volume" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4zM15.2 8.4a4.6 4.6 0 0 1 0 7.2l-1.2-1.5a2.8 2.8 0 0 0 0-4.2z"/></symbol>
+</svg>
+
+<div class="app" id="app">
+
+  <div class="bg" id="bg"><div class="bg-veil"></div></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark"><svg><use href="#i-cloud"/></svg></span>
+      <span class="brand-name">云音乐</span>
+      <span class="badge" id="mode-badge" hidden>演示</span>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="btn-refresh" title="重新扫描曲库" aria-label="重新扫描曲库">
+        <svg><use href="#i-refresh"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <div class="cover-shell" id="cover-shell">
+      <div class="cover" id="cover">
+        <div class="cover-fallback"><svg><use href="#i-music"/></svg></div>
+        <img id="cover-img" alt="" hidden>
+      </div>
+    </div>
+
+    <div class="meta">
+      <h1 class="title" id="title">还没有播放</h1>
+      <p class="subtitle" id="subtitle">从下面的列表里选一首开始</p>
+    </div>
+
+    <div class="progress">
+      <input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="播放进度">
+      <div class="times">
+        <span id="time-cur">0:00</span>
+        <span id="time-dur">0:00</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="ctrl small" id="btn-shuffle" aria-label="随机播放" title="随机播放">
+        <svg><use href="#i-shuffle"/></svg>
+      </button>
+      <button class="ctrl" id="btn-prev" aria-label="上一首" title="上一首">
+        <svg><use href="#i-prev"/></svg>
+      </button>
+      <button class="ctrl main" id="btn-play" aria-label="播放" title="播放">
+        <svg class="icon-play"><use href="#i-play"/></svg>
+        <svg class="icon-pause" hidden><use href="#i-pause"/></svg>
+        <span class="spinner" hidden></span>
+      </button>
+      <button class="ctrl" id="btn-next" aria-label="下一首" title="下一首">
+        <svg><use href="#i-next"/></svg>
+      </button>
+      <button class="ctrl small" id="btn-repeat" aria-label="循环模式" title="循环模式">
+        <svg><use href="#i-repeat"/></svg>
+      </button>
+    </div>
+  </main>
+
+  <section class="sheet" id="sheet" aria-label="播放列表">
+    <div class="sheet-grip" id="sheet-grip">
+      <span class="grip-bar"></span>
+      <div class="sheet-head">
+        <span class="sheet-title">播放列表</span>
+        <span class="sheet-count" id="sheet-count">0 首</span>
+      </div>
+    </div>
+
+    <div class="sheet-body">
+      <div class="search-row">
+        <svg class="search-icon"><use href="#i-search"/></svg>
+        <input type="search" id="search" placeholder="搜索歌曲或歌手" autocomplete="off" enterkeyhint="search">
+        <button class="clear-btn" id="btn-clear" hidden aria-label="清空"><svg><use href="#i-close"/></svg></button>
+      </div>
+      <ul class="list" id="list"></ul>
+      <div class="empty" id="empty" hidden>
+        <svg><use href="#i-music"/></svg>
+        <p id="empty-text">曲库里还没有歌</p>
+        <span id="empty-hint"></span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="modal" id="gate" hidden>
+  <div class="modal-card">
+    <h2>需要访问口令</h2>
+    <p>这个音乐站点设置了访问口令，请输入后继续。</p>
+    <input type="password" id="gate-input" placeholder="访问口令" autocomplete="current-password">
+    <button class="primary" id="gate-submit">进入</button>
+    <p class="gate-error" id="gate-error" hidden></p>
+  </div>
+</div>
+
+<audio id="audio" preload="metadata" playsinline></audio>
+
+<script src="/app.js" type="module"></script>
+</body>
+</html>
