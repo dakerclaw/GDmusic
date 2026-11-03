@@ -15,7 +15,14 @@ function currentProvider() {
 
 const app = express();
 app.disable('x-powered-by');
-app.use(compression({ filter: (req, res) => res.getHeader('Content-Type')?.toString().startsWith('audio/') ? false : compression.filter(req, res) }));
+// 音频流绝不 gzip（会破坏 Range/Content-Length 语义导致浏览器不播）
+app.use(compression({
+  filter: (req, res) => {
+    if (req.path.startsWith('/api/stream/')) return false;
+    if (res.getHeader('Content-Type')?.toString().startsWith('audio/')) return false;
+    return compression.filter(req, res);
+  },
+}));
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
@@ -225,18 +232,21 @@ app.get('/api/stream/:id', wrap(async (req, res) => {
   try {
     upstream = await prov.openMedia(id, range);
   } catch (err) {
+    console.error(`[stream] ${id} 上游打开失败:`, err.message);
     return res.status(502).json({ error: `上游读取失败：${err.message}` });
+  }
+
+  if (upstream.status === 403) {
+    console.error(`[stream] ${id} 上游 403：文件夹可能未共享给服务账号`);
+    return res.status(502).json({ error: '上游拒绝访问（403）：请在 Google Drive 里把该文件夹共享给服务账号（查看者）' });
   }
 
   if (!upstream.ok && upstream.status !== 206) {
     const detail = await upstream.text().catch(() => '');
+    console.error(`[stream] ${id} 上游错误 ${upstream.status}: ${detail.slice(0, 200)}`);
     return res
       .status(upstream.status === 404 ? 404 : 502)
       .json({ error: `无法读取音频 (${upstream.status})`, detail: detail.slice(0, 300) });
-  }
-
-  if (upstream.status === 403) {
-    return res.status(502).json({ error: '上游拒绝访问（403）：请确认文件夹已共享给服务账号' });
   }
 
   res.status(upstream.status);
@@ -254,8 +264,12 @@ app.get('/api/stream/:id', wrap(async (req, res) => {
 
   if (!upstream.body) return res.end();
   const stream = Readable.fromWeb(upstream.body);
-  stream.on('error', () => res.destroy());
+  stream.on('error', (err) => {
+    console.error(`[stream] ${id} 流中断:`, err.message);
+    res.destroy();
+  });
   res.on('close', () => stream.destroy());
+  res.flushHeaders();
   stream.pipe(res);
 }));
 

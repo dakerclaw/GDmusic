@@ -316,6 +316,15 @@ function bindEvents() {
   audio.addEventListener('waiting', () => { state.loading = true; updatePlayBtn(); });
   audio.addEventListener('canplay', () => { state.loading = false; updatePlayBtn(); });
   audio.addEventListener('ended', () => next(true));
+  audio.addEventListener('error', () => {
+    state.loading = false;
+    state.playing = false;
+    updatePlayBtn();
+    const code = audio.error?.code;
+    const why = code === 4 ? '格式不支持' : code === 2 ? '网络错误' : code === 3 ? '解码失败' : '加载失败';
+    toast(`播放失败：${why}，请重试或换一首`);
+    console.error('[audio] error code:', code, audio.error?.message || '');
+  });
   audio.addEventListener('timeupdate', () => {
     if (dragTimer) return;
     const p = audio.duration ? audio.currentTime / audio.duration : 0;
