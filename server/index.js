@@ -19,7 +19,7 @@ app.use(compression({ filter: (req, res) => res.getHeader('Content-Type')?.toStr
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-const VERSION = '1.1.0';
+const VERSION = '1.1.1';
 
 function parseCookies(header = '') {
   const out = {};
@@ -268,12 +268,18 @@ app.use(express.static(path.join(ROOT, 'public'), {
   setHeaders: (res, filePath) => {
     if (/\.(css|js|svg|png|jpg|woff2?)$/.test(filePath)) {
       res.setHeader('Cache-Control', 'public, max-age=3600');
+    } else if (filePath.endsWith('.html')) {
+      // HTML 不缓存，避免更新后浏览器拿旧页面调用旧接口
+      res.setHeader('Cache-Control', 'no-cache');
     }
   },
 }));
 
 app.use((req, res) => {
-  if (req.path.startsWith('/api/')) return res.status(404).json({ error: '接口不存在' });
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: `接口不存在：${req.method} ${req.path}`, version: VERSION });
+  }
+  res.setHeader('Cache-Control', 'no-cache');
   res.sendFile(path.join(ROOT, 'public', 'index.html'));
 });
 
