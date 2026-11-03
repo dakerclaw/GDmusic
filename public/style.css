@@ -360,13 +360,24 @@ input[type="range"]::-moz-range-thumb {
     grid-template-areas:
       "topbar playlist"
       "stage  playlist";
+    transition: grid-template-columns var(--transition);
+  }
+  /* 列表收起态：右栏缩为 0，只剩播放区 */
+  .app.list-hidden {
+    grid-template-columns: 1fr 0;
+  }
+  .app.list-hidden .sheet {
+    opacity: 0; pointer-events: none;
   }
   .topbar { grid-area: topbar; }
   .stage { grid-area: stage; padding: 0 24px; }
   .sheet {
     grid-area: playlist;
+    position: static;
+    transform: none;
+    height: 100dvh;
+    box-shadow: none;
     border-radius: 0; border-top: none; border-left: 1px solid rgba(255,255,255,0.06);
-    max-height: 100dvh;
     background: rgba(18,18,24,0.55);
     backdrop-filter: blur(14px) saturate(1.1);
   }

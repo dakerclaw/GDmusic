@@ -435,15 +435,18 @@ function bindEvents() {
   const grip = $('#sheet-grip');
   const isDesktop = () => window.matchMedia('(min-width:980px)').matches;
 
-  const openSheet = (open) => sheet.classList.toggle('open', open);
-  // 手机端：控制栏按钮 + 把手都能开合浮层
-  $('#btn-list').addEventListener('click', () => {
-    const opening = !sheet.classList.contains('open');
-    openSheet(opening);
-    $('#btn-list').classList.toggle('on', opening);
-  });
+  const openSheet = (open) => {
+    sheet.classList.toggle('open', open);
+    $('#btn-list').classList.toggle('on', open);
+    // 桌面端：列表收起 = .app 加 list-hidden 类（grid 列宽归零）
+    if (window.matchMedia('(min-width:980px)').matches) {
+      $('.app').classList.toggle('list-hidden', !open);
+    }
+  };
+  // 顶部列表按钮：手机=开合底部浮层；桌面=收起/展开右侧常驻列表
+  $('#btn-list').addEventListener('click', () => openSheet(!sheet.classList.contains('open')));
   grip.addEventListener('click', () => { if (!isDesktop()) openSheet(false); });
-  // 滑动手势：上滑展开（按钮），下滑/点把手收起（浮层）
+  // 滑动手势：浮层内下滑收起
   let sy = 0;
   grip.addEventListener('touchstart', (e) => { sy = e.touches[0].clientY; }, { passive: true });
   grip.addEventListener('touchend', (e) => {

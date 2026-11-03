@@ -12,7 +12,7 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<link rel="stylesheet" href="/style.css?v=1.1.18">
+<link rel="stylesheet" href="/style.css?v=1.1.19">
 </head>
 <body>
 
@@ -44,6 +44,9 @@
       <span class="badge" id="mode-badge" hidden>演示</span>
     </div>
     <div class="top-actions">
+      <button class="icon-btn" id="btn-list" title="播放列表" aria-label="播放列表">
+        <svg><use href="#i-list"/></svg>
+      </button>
       <button class="icon-btn" id="btn-setup" title="设置" aria-label="设置">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 1 0 0 6.4z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
@@ -85,9 +88,6 @@
       </button>
       <button class="ctrl" id="btn-next" aria-label="下一首" title="下一首">
         <svg><use href="#i-next"/></svg>
-      </button>
-      <button class="ctrl small" id="btn-list" aria-label="播放列表" title="播放列表">
-        <svg><use href="#i-list"/></svg>
       </button>
       <button class="ctrl small" id="btn-repeat" aria-label="循环模式" title="循环模式">
         <svg><use href="#i-repeat"/></svg>
@@ -156,6 +156,6 @@
 
 <audio id="audio" preload="metadata" playsinline></audio>
 
-<script src="/app.js?v=1.1.18" type="module"></script>
+<script src="/app.js?v=1.1.19" type="module"></script>
 </body>
 </html>
