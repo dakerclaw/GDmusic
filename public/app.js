@@ -22,7 +22,8 @@ let dragTimer = null;
 
 /* ---------- API ---------- */
 async function api(path, opts = {}) {
-  const url = `/api${path}`;
+  // path 兼容带或不带 /api 前缀，避免拼接出 /api/api/...
+  const url = path.startsWith('/api/') ? path : `/api${path}`;
   const body = opts.body ? JSON.stringify(opts.body) : undefined;
   const headers = { Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}) };
   const saved = localStorage.getItem('cm_code');
@@ -48,7 +49,7 @@ async function api(path, opts = {}) {
 /* ---------- 初始化 ---------- */
 async function init() {
   try {
-    const cfg = await api('/api/config');
+    const cfg = await api('/config');
     state.demo = cfg.demo;
     $('#mode-badge').hidden = !cfg.demo;
 
@@ -61,7 +62,7 @@ async function init() {
     if (cfg.accessRequired) {
       const saved = localStorage.getItem('cm_code');
       if (saved) {
-        try { await api('/api/unlock', { method: 'POST', body: { code: saved } }); }
+        try { await api('/unlock', { method: 'POST', body: { code: saved } }); }
         catch { state.gate = true; }
       } else {
         state.gate = true;
@@ -82,17 +83,19 @@ async function init() {
   }
 }
 
-async function loadTracks() {
-  const data = await api('/api/tracks');
+async function loadTracks(force = false) {
+  const data = await api('/tracks' + (force ? '?refresh=1' : ''));
   state.tracks = data.tracks || [];
+  state.demo = data.demo;
+  $('#mode-badge').hidden = !data.demo;
   renderList();
   $('#sheet-count').textContent = `${state.tracks.length} 首`;
   if (!state.tracks.length) {
     $('#empty').hidden = false;
     $('#empty-text').textContent = '曲库里还没有歌';
     $('#empty-hint').textContent = data.demo
-      ? '当前是演示模式。请在 .env 中配置 Google Drive 后重启。'
-      : '请检查 DRIVE_FOLDER_ID 是否已共享给服务账号。';
+      ? '当前是演示模式。点右上角 ⚙ 设置连接 Google Drive。'
+      : '请检查文件夹是否已共享给服务账号，或点 ⚙ 设置重新保存。';
     $('#list').innerHTML = '';
   } else {
     $('#empty').hidden = true;
@@ -549,7 +552,7 @@ $('#gate-submit').addEventListener('click', async () => {
   const code = $('#gate-input').value.trim();
   if (!code) return;
   try {
-    await api('/api/unlock', { method: 'POST', body: { code } });
+    await api('/unlock', { method: 'POST', body: { code } });
     localStorage.setItem('cm_code', code);
     $('#gate').hidden = true;
     state.gate = false;
