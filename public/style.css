@@ -314,7 +314,7 @@ input[type="range"]::-moz-range-thumb {
 
 /* Toast */
 .toast {
-  position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 10px); left: 50%; z-index: 100;
+  position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 10px); left: 50%; z-index: 500;
   transform: translateX(-50%) translateY(20px); opacity: 0;
   padding: 10px 18px; border-radius: 24px;
   background: rgba(22,22,34,0.92); color: var(--text); font-size: 13px;
