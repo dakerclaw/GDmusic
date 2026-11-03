@@ -47,6 +47,20 @@ function isAudioFile(file) {
   return AUDIO_EXT.test(file.name || '');
 }
 
+/** Drive mimeType / 扩展名 → 浏览器可识别的 MIME */
+export function browserMime(name, mimeType) {
+  const ext = (name || '').split('.').pop().toLowerCase();
+  const byExt = {
+    mp3: 'audio/mpeg', m4a: 'audio/mp4', m4b: 'audio/mp4', aac: 'audio/aac',
+    flac: 'audio/flac', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg',
+    wav: 'audio/wav', weba: 'audio/webm', webm: 'audio/webm',
+    aiff: 'audio/aiff', aif: 'audio/aiff', wma: 'audio/x-ms-wma',
+  };
+  if (byExt[ext]) return byExt[ext];
+  if (mimeType?.startsWith('audio/')) return mimeType;
+  return 'audio/mpeg';
+}
+
 /** 列出某个文件夹下的直接子项（文件 + 子文件夹） */
 async function listChildren(folderId) {
   const items = [];

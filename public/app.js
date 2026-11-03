@@ -320,10 +320,8 @@ function bindEvents() {
     state.loading = false;
     state.playing = false;
     updatePlayBtn();
-    const code = audio.error?.code;
-    const why = code === 4 ? '格式不支持' : code === 2 ? '网络错误' : code === 3 ? '解码失败' : '加载失败';
-    toast(`播放失败：${why}，请重试或换一首`);
-    console.error('[audio] error code:', code, audio.error?.message || '');
+    // 回读流接口的真实错误（浏览器把 JSON 错误页当音频解码才报"格式不支持"）
+    probeStreamError(audio.src);
   });
   audio.addEventListener('timeupdate', () => {
     if (dragTimer) return;
@@ -555,6 +553,31 @@ function restoreSession() {
 function showGate() {
   $('#gate').hidden = false;
   $('#gate-input').focus();
+}
+
+/** 流播放失败时回读接口，显示服务器返回的真实错误 */
+async function probeStreamError(src) {
+  let msg = '播放失败：无法读取音频';
+  try {
+    const saved = localStorage.getItem('cm_code');
+    const res = await fetch(src, {
+      headers: { Range: 'bytes=0-1', ...(saved ? { 'x-access-code': saved } : {}) },
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      msg = `播放失败 (${res.status})：${data.error || res.statusText}`;
+      if (data.detail) console.error('[stream detail]', data.detail);
+    } else {
+      const type = res.headers.get('content-type') || '';
+      if (!type.startsWith('audio/')) {
+        msg = `播放失败：服务器返回 ${type || '未知类型'} 而非音频`;
+      } else {
+        msg = `播放失败：音频流中断（${type}）`;
+      }
+    }
+  } catch { /* 网络层失败保持默认消息 */ }
+  toast(msg);
+  console.error('[audio]', msg, '| src:', src);
 }
 
 $('#gate-submit').addEventListener('click', async () => {

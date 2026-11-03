@@ -6,6 +6,7 @@ import { config, ROOT, describeConfig, saveRuntimeConfig, configSource, envDrive
 import * as drive from './drive.js';
 import * as local from './local.js';
 import { getTrackMeta, getCoverFile, guessFromName } from './meta.js';
+import { browserMime } from './drive.js';
 
 const provider = config.demo ? local : drive;
 
@@ -255,7 +256,7 @@ app.get('/api/stream/:id', wrap(async (req, res) => {
     const value = upstream.headers.get(key);
     if (value) res.setHeader(key, value);
   }
-  if (!res.getHeader('Content-Type')) res.setHeader('Content-Type', info.mimeType || 'audio/mpeg');
+  if (!res.getHeader('Content-Type')) res.setHeader('Content-Type', browserMime(info.name, info.mimeType));
   if (!res.getHeader('Content-Length') && upstream.status === 200 && info.size) {
     res.setHeader('Content-Length', String(info.size));
   }
