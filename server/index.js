@@ -27,7 +27,7 @@ app.use(compression({
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-const VERSION = '1.1.8';
+const VERSION = '1.1.9';
 
 function parseCookies(header = '') {
   const out = {};
