@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -7,16 +7,16 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="云音乐">
-<title>云音乐</title>
+<meta name="apple-mobile-web-app-title" content="浜戦煶涔?>
+<title>浜戦煶涔?/title>
 <link rel="manifest" href="/manifest.json">
-<link rel="icon" href="/icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/icon.svg">
+<link rel="icon" href="/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
-<svg class="sprite" aria-hidden="true">
+<svg class="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.14v13.72c0 .8.87 1.3 1.56.9l11.1-6.86a1.05 1.05 0 0 0 0-1.8L9.56 4.24A1.05 1.05 0 0 0 8 5.14z"/></symbol>
   <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4.5" width="4" height="15" rx="1.6"/><rect x="14" y="4.5" width="4" height="15" rx="1.6"/></symbol>
   <symbol id="i-prev" viewBox="0 0 24 24"><rect x="5" y="5" width="2.6" height="14" rx="1.3"/><path d="M19 6.6v10.8c0 .9-1 1.4-1.7.9l-8-5.4a1.1 1.1 0 0 1 0-1.8l8-5.4c.7-.5 1.7 0 1.7.9z"/></symbol>
@@ -39,36 +39,36 @@
 
   <header class="topbar">
     <div class="brand">
-      <span class="brand-mark"><svg><use href="#i-cloud"/></svg></span>
-      <span class="brand-name">云音乐</span>
-      <span class="badge" id="mode-badge" hidden>演示</span>
+      <span class="brand-mark"><svg><use xlink:href="#i-cloud" href="#i-cloud"/></svg></span>
+      <span class="brand-name">浜戦煶涔?/span>
+      <span class="badge" id="mode-badge" hidden>婕旂ず</span>
     </div>
     <div class="top-actions">
-      <button class="icon-btn" id="btn-setup" title="设置" aria-label="设置">
+      <button class="icon-btn" id="btn-setup" title="璁剧疆" aria-label="璁剧疆">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
-      <button class="icon-btn" id="btn-refresh" title="重新扫描曲库" aria-label="重新扫描曲库">
-        <svg><use href="#i-refresh"/></svg>
+      <button class="icon-btn" id="btn-refresh" title="閲嶆柊鎵弿鏇插簱" aria-label="閲嶆柊鎵弿鏇插簱">
+        <svg><use xlink:href="#i-refresh" href="#i-refresh"/></svg>
       </button>
     </div>
   </header>
 
   <main class="stage">
-    <button class="setup-banner" id="setup-banner" hidden>⚙ 当前是演示模式 — 点此连接你的 Google Drive</button>
+    <button class="setup-banner" id="setup-banner" hidden>鈿?褰撳墠鏄紨绀烘ā寮?鈥?鐐规杩炴帴浣犵殑 Google Drive</button>
     <div class="cover-shell" id="cover-shell">
       <div class="cover" id="cover">
-        <div class="cover-fallback"><svg><use href="#i-music"/></svg></div>
+        <div class="cover-fallback"><svg><use xlink:href="#i-music" href="#i-music"/></svg></div>
         <img id="cover-img" alt="" hidden>
       </div>
     </div>
 
     <div class="meta">
-      <h1 class="title" id="title">还没有播放</h1>
-      <p class="subtitle" id="subtitle">从下面的列表里选一首开始</p>
+      <h1 class="title" id="title">杩樻病鏈夋挱鏀?/h1>
+      <p class="subtitle" id="subtitle">浠庝笅闈㈢殑鍒楄〃閲岄€変竴棣栧紑濮?/p>
     </div>
 
     <div class="progress">
-      <input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="播放进度">
+      <input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="鎾斁杩涘害">
       <div class="times">
         <span id="time-cur">0:00</span>
         <span id="time-dur">0:00</span>
@@ -76,45 +76,45 @@
     </div>
 
     <div class="controls">
-      <button class="ctrl small" id="btn-shuffle" aria-label="随机播放" title="随机播放">
-        <svg><use href="#i-shuffle"/></svg>
+      <button class="ctrl small" id="btn-shuffle" aria-label="闅忔満鎾斁" title="闅忔満鎾斁">
+        <svg><use xlink:href="#i-shuffle" href="#i-shuffle"/></svg>
       </button>
-      <button class="ctrl" id="btn-prev" aria-label="上一首" title="上一首">
-        <svg><use href="#i-prev"/></svg>
+      <button class="ctrl" id="btn-prev" aria-label="涓婁竴棣? title="涓婁竴棣?>
+        <svg><use xlink:href="#i-prev" href="#i-prev"/></svg>
       </button>
-      <button class="ctrl main" id="btn-play" aria-label="播放" title="播放">
-        <svg class="icon-play"><use href="#i-play"/></svg>
-        <svg class="icon-pause" hidden><use href="#i-pause"/></svg>
+      <button class="ctrl main" id="btn-play" aria-label="鎾斁" title="鎾斁">
+        <svg class="icon-play"><use xlink:href="#i-play" href="#i-play"/></svg>
+        <svg class="icon-pause" hidden><use xlink:href="#i-pause" href="#i-pause"/></svg>
         <span class="spinner" hidden></span>
       </button>
-      <button class="ctrl" id="btn-next" aria-label="下一首" title="下一首">
-        <svg><use href="#i-next"/></svg>
+      <button class="ctrl" id="btn-next" aria-label="涓嬩竴棣? title="涓嬩竴棣?>
+        <svg><use xlink:href="#i-next" href="#i-next"/></svg>
       </button>
-      <button class="ctrl small" id="btn-repeat" aria-label="循环模式" title="循环模式">
-        <svg><use href="#i-repeat"/></svg>
+      <button class="ctrl small" id="btn-repeat" aria-label="寰幆妯″紡" title="寰幆妯″紡">
+        <svg><use xlink:href="#i-repeat" href="#i-repeat"/></svg>
       </button>
     </div>
   </main>
 
-  <section class="sheet" id="sheet" aria-label="播放列表">
+  <section class="sheet" id="sheet" aria-label="鎾斁鍒楄〃">
     <div class="sheet-grip" id="sheet-grip">
       <span class="grip-bar"></span>
       <div class="sheet-head">
-        <span class="sheet-title">播放列表</span>
-        <span class="sheet-count" id="sheet-count">0 首</span>
+        <span class="sheet-title">鎾斁鍒楄〃</span>
+        <span class="sheet-count" id="sheet-count">0 棣?/span>
       </div>
     </div>
 
     <div class="sheet-body">
       <div class="search-row">
-        <svg class="search-icon"><use href="#i-search"/></svg>
-        <input type="search" id="search" placeholder="搜索歌曲或歌手" autocomplete="off" enterkeyhint="search">
-        <button class="clear-btn" id="btn-clear" hidden aria-label="清空"><svg><use href="#i-close"/></svg></button>
+        <svg class="search-icon"><use xlink:href="#i-search" href="#i-search"/></svg>
+        <input type="search" id="search" placeholder="鎼滅储姝屾洸鎴栨瓕鎵? autocomplete="off" enterkeyhint="search">
+        <button class="clear-btn" id="btn-clear" hidden aria-label="娓呯┖"><svg><use xlink:href="#i-close" href="#i-close"/></svg></button>
       </div>
       <ul class="list" id="list"></ul>
       <div class="empty" id="empty" hidden>
-        <svg><use href="#i-music"/></svg>
-        <p id="empty-text">曲库里还没有歌</p>
+        <svg><use xlink:href="#i-music" href="#i-music"/></svg>
+        <p id="empty-text">鏇插簱閲岃繕娌℃湁姝?/p>
         <span id="empty-hint"></span>
       </div>
     </div>
@@ -126,32 +126,32 @@
 
 <div class="modal" id="gate" hidden>
   <div class="modal-card">
-    <h2>需要访问口令</h2>
-    <p>这个音乐站点设置了访问口令，请输入后继续。</p>
-    <input type="password" id="gate-input" placeholder="访问口令" autocomplete="current-password">
-    <button class="primary" id="gate-submit">进入</button>
+    <h2>闇€瑕佽闂彛浠?/h2>
+    <p>杩欎釜闊充箰绔欑偣璁剧疆浜嗚闂彛浠わ紝璇疯緭鍏ュ悗缁х画銆?/p>
+    <input type="password" id="gate-input" placeholder="璁块棶鍙ｄ护" autocomplete="current-password">
+    <button class="primary" id="gate-submit">杩涘叆</button>
     <p class="gate-error" id="gate-error" hidden></p>
   </div>
 </div>
 
 <div class="modal" id="setup" hidden>
   <div class="modal-card setup-card">
-    <h2>连接 Google Drive</h2>
-    <p class="setup-hint" id="setup-hint">粘贴服务账号 JSON 密钥与音乐文件夹 ID，保存后立即生效（无需重启）。</p>
+    <h2>杩炴帴 Google Drive</h2>
+    <p class="setup-hint" id="setup-hint">绮樿创鏈嶅姟璐﹀彿 JSON 瀵嗛挜涓庨煶涔愭枃浠跺す ID锛屼繚瀛樺悗绔嬪嵆鐢熸晥锛堟棤闇€閲嶅惎锛夈€?/p>
     <div class="setup-status" id="setup-status" hidden></div>
-    <label class="setup-label">服务账号 JSON 密钥 <span id="setup-sa-state" class="setup-state"></span></label>
+    <label class="setup-label">鏈嶅姟璐﹀彿 JSON 瀵嗛挜 <span id="setup-sa-state" class="setup-state"></span></label>
     <textarea id="setup-sa" rows="5" placeholder='{"type":"service_account","project_id":"...", ...}' spellcheck="false"></textarea>
-    <label class="setup-label">音乐文件夹 ID（多个用逗号分隔）</label>
+    <label class="setup-label">闊充箰鏂囦欢澶?ID锛堝涓敤閫楀彿鍒嗛殧锛?/label>
     <input type="text" id="setup-folders" placeholder="1AbC..." spellcheck="false">
-    <label class="setup-check"><input type="checkbox" id="setup-recursive" checked> 递归扫描子文件夹</label>
-    <label class="setup-label">访问口令（留空 = 不启用）</label>
-    <input type="text" id="setup-code" placeholder="不启用" autocomplete="off">
+    <label class="setup-check"><input type="checkbox" id="setup-recursive" checked> 閫掑綊鎵弿瀛愭枃浠跺す</label>
+    <label class="setup-label">璁块棶鍙ｄ护锛堢暀绌?= 涓嶅惎鐢級</label>
+    <input type="text" id="setup-code" placeholder="涓嶅惎鐢? autocomplete="off">
     <div class="setup-actions">
-      <button class="ghost" id="setup-test">测试文件夹</button>
-      <button class="primary" id="setup-save">保存并连接</button>
-      <button class="ghost" id="setup-close">关闭</button>
+      <button class="ghost" id="setup-test">娴嬭瘯鏂囦欢澶?/button>
+      <button class="primary" id="setup-save">淇濆瓨骞惰繛鎺?/button>
+      <button class="ghost" id="setup-close">鍏抽棴</button>
     </div>
-    <p class="setup-note">密钥只保存在服务器 data/keys/（权限 600）。记得把文件夹共享给服务账号邮箱（查看者）。</p>
+    <p class="setup-note">瀵嗛挜鍙繚瀛樺湪鏈嶅姟鍣?data/keys/锛堟潈闄?600锛夈€傝寰楁妸鏂囦欢澶瑰叡浜粰鏈嶅姟璐﹀彿閭锛堟煡鐪嬭€咃級銆?/p>
   </div>
 </div>
 

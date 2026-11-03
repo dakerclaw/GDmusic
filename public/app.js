@@ -367,7 +367,7 @@ function bindEvents() {
     const idx = (modes.indexOf(state.repeat) + 1) % modes.length;
     state.repeat = modes[idx];
     const use = state.repeat === 'one' ? '#i-repeat-one' : '#i-repeat';
-    $('#btn-repeat').querySelector('use').setAttribute('href', use);
+    setUseHref($('#btn-repeat'), use);
     $('#btn-repeat').classList.toggle('on', state.repeat !== 'off');
     const labels = { off: '列表播放', all: '列表循环', one: '单曲循环' };
     toast(labels[state.repeat]);
@@ -551,7 +551,7 @@ function restoreSession() {
     if (s.repeat) {
       state.repeat = s.repeat;
       $('#btn-repeat').classList.toggle('on', state.repeat !== 'off');
-      $('#btn-repeat').querySelector('use').setAttribute('href', state.repeat === 'one' ? '#i-repeat-one' : '#i-repeat');
+      setUseHref($('#btn-repeat'), state.repeat === 'one' ? '#i-repeat-one' : '#i-repeat');
     }
     if (s.trackId) {
       const idx = state.tracks.findIndex((t) => t.id === s.trackId);
@@ -710,6 +710,13 @@ $('#setup-save').addEventListener('click', async () => {
 });
 
 /* ---------- 工具 ---------- */
+/** SVG use 兼容写法：旧移动浏览器只认 xlink:href，新标准用 href */
+function setUseHref(el, id) {
+  const use = el.querySelector('use');
+  if (!use) return;
+  use.setAttribute('href', id);
+  use.setAttribute('xlink:href', id);
+}
 function formatTime(sec) {
   if (!isFinite(sec) || sec < 0) return '0:00';
   const m = Math.floor(sec / 60);
