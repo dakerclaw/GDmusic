@@ -41,9 +41,18 @@ async function apiFetch(url, { retry = true } = {}) {
   return res;
 }
 
-/** 带超时的 fetch（Node fetch 默认无超时，上游挂起会拖死请求） */
+/** 带连接超时的 fetch：仅约束「建立连接+收到响应头」，响应体流不受限（音频流会播放远超 15s） */
 async function fetchWithTimeout(url, options = {}, ms = 15000) {
-  return fetch(url, { ...options, signal: AbortSignal.timeout(ms) });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error(`连接超时 (${ms}ms)`)), ms);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timer); // 响应头已到达，解除计时，音频流自由读取
+    return res;
+  } catch (err) {
+    clearTimeout(timer);
+    throw err;
+  }
 }
 
 function isAudioFile(file) {
