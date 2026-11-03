@@ -176,7 +176,10 @@ function playIndex(idx) {
 
   setCover(null);
   if (track.hasCover) loadCover(track.id);
+  // 立即刷新所有 UI（歌名/列表高亮/锁屏信息），不等音频事件
   updateMeta();
+  updateSeekUI(0);
+  updateMediaSessionMeta();
   renderList($('#search').value);
   saveSession();
 }
@@ -241,6 +244,8 @@ function updateMeta() {
   $('#title').textContent = track.title || track.name;
   $('#subtitle').textContent = track.artist || '未知歌手';
   document.title = `${track.title || track.name} — 云音乐`;
+  // 同步锁屏/通知栏（切歌时立即更新，不等 play 事件）
+  updateMediaSessionMeta();
 }
 
 function setCover(url) {
@@ -336,6 +341,8 @@ function bindEvents() {
       t.duration = audio.duration;
       renderList($('#search').value);
     }
+    // 新歌时长就位后刷新进度显示（避免显示上一首的时长）
+    updateSeekUI(0);
   });
 
   // 控制按钮
