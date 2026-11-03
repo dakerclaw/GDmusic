@@ -27,7 +27,7 @@ app.use(compression({
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-const VERSION = '1.1.15';
+const VERSION = '1.1.16';
 
 function parseCookies(header = '') {
   const out = {};
@@ -315,7 +315,8 @@ app.use(express.static(path.join(ROOT, 'public'), {
   extensions: ['html'],
   setHeaders: (res, filePath) => {
     if (/\.(css|js|svg|png|jpg|woff2?)$/.test(filePath)) {
-      res.setHeader('Cache-Control', 'public, max-age=3600');
+      // 带 ?v= 查询参数的引用每次发版自动失效；这里给短缓存兜底
+      res.setHeader('Cache-Control', 'public, max-age=600');
     } else if (filePath.endsWith('.html')) {
       // HTML 不缓存，避免更新后浏览器拿旧页面调用旧接口
       res.setHeader('Cache-Control', 'no-cache');
