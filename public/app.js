@@ -406,19 +406,21 @@ function bindEvents() {
   const grip = $('#sheet-grip');
   const isDesktop = () => window.matchMedia('(min-width:980px)').matches;
 
-  grip.addEventListener('click', () => {
-    if (isDesktop()) return;
-    sheet.classList.toggle('open');
+  const openSheet = (open) => sheet.classList.toggle('open', open);
+  // 手机端：控制栏按钮 + 把手都能开合浮层
+  $('#btn-list').addEventListener('click', () => {
+    const opening = !sheet.classList.contains('open');
+    openSheet(opening);
+    $('#btn-list').classList.toggle('on', opening);
   });
-  // 滑动手势展开/收起
+  grip.addEventListener('click', () => { if (!isDesktop()) openSheet(false); });
+  // 滑动手势：上滑展开（按钮），下滑/点把手收起（浮层）
   let sy = 0;
   grip.addEventListener('touchstart', (e) => { sy = e.touches[0].clientY; }, { passive: true });
   grip.addEventListener('touchend', (e) => {
     if (isDesktop()) return;
     const dy = e.changedTouches[0].clientY - sy;
-    if (Math.abs(dy) > 40) {
-      sheet.classList.toggle('open', dy < 0);
-    }
+    if (dy > 40) openSheet(false); // 下滑收起
   }, { passive: true });
 
   // 键盘
