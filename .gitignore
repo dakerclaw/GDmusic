@@ -5,3 +5,5 @@ service-account*.json
 .cache/
 shots/
 demo-music/*.wav
+
+data/

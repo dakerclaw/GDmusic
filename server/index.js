@@ -2,18 +2,24 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import express from 'express';
 import compression from 'compression';
-import { config, ROOT, describeConfig } from './config.js';
+import { config, ROOT, describeConfig, saveRuntimeConfig, configSource, envDriven } from './config.js';
 import * as drive from './drive.js';
 import * as local from './local.js';
 import { getTrackMeta, getCoverFile, guessFromName } from './meta.js';
 
 const provider = config.demo ? local : drive;
 
+function currentProvider() {
+  return config.demo ? local : drive;
+}
+
 const app = express();
 app.disable('x-powered-by');
 app.use(compression({ filter: (req, res) => res.getHeader('Content-Type')?.toString().startsWith('audio/') ? false : compression.filter(req, res) }));
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
+const VERSION = '1.1.0';
 
 function parseCookies(header = '') {
   const out = {};
@@ -33,8 +39,100 @@ app.get('/api/config', (req, res) => {
     serviceAccountEmail: config.serviceAccountEmail,
     folders: config.folderIds.length,
     recursive: config.recursive,
+    configSource,
+    envDriven,
   });
 });
+
+/* ---------------- 网页设置（先安装后配置） ---------------- */
+
+app.get('/api/setup/status', (req, res) => {
+  res.json({
+    configured: !config.demo,
+    configSource,
+    serviceAccountEmail: config.serviceAccountEmail,
+    folderIds: config.folderIds,
+    recursive: config.recursive,
+    accessRequired: Boolean(config.accessCode),
+    hint: config.demo
+      ? '当前为演示模式。填入服务账号 JSON 与音乐文件夹 ID 即可接入 Google Drive。'
+      : null,
+  });
+});
+
+app.post('/api/setup', express.json({ limit: '1mb' }), wrap(async (req, res) => {
+  const { serviceAccountJson, folderIds, accessCode, recursive } = req.body || {};
+  const idsInput = Array.isArray(folderIds) ? folderIds : String(folderIds || '').split(',');
+  if (!config.credentials && !serviceAccountJson && !(config.folderIds.length)) {
+    // 从演示模式首次配置：SA 必填
+    if (!serviceAccountJson) return res.status(400).json({ ok: false, error: '请粘贴服务账号 JSON 密钥' });
+  }
+  try {
+    const changed = saveRuntimeConfig({
+      serviceAccountJson: serviceAccountJson ?? null,
+      folderIds: idsInput,
+      accessCode,
+      recursive,
+    });
+    if (changed.credentials || changed.folderIds) {
+      drive.resetAuth();
+      cache = { at: 0, tracks: [] }; // 清曲库缓存，下次请求重建
+      config.demo = !config.credentials || config.folderIds.length === 0;
+    }
+    res.json({ ok: true, demo: config.demo, serviceAccountEmail: config.serviceAccountEmail, folderIds: config.folderIds });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
+  }
+}));
+
+/** 测试文件夹连通性（不保存）：返回文件夹名与文件数 */
+app.post('/api/setup/test', express.json({ limit: '1mb' }), wrap(async (req, res) => {
+  const { serviceAccountJson, folderId } = req.body || {};
+  try {
+    let credentials = config.credentials;
+    if (serviceAccountJson) {
+      const { parseServiceAccount } = await import('./config.js');
+      credentials = parseServiceAccount(serviceAccountJson);
+    }
+    if (!credentials) return res.status(400).json({ ok: false, error: '缺少服务账号凭证' });
+    const id = String(folderId || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: '缺少文件夹 ID' });
+    const { GoogleAuth } = await import('google-auth-library');
+    const auth = new GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/drive.readonly'] });
+    const client = await auth.getClient();
+    const tokenRes = await client.getAccessToken();
+    const token = typeof tokenRes === 'string' ? tokenRes : tokenRes?.token;
+    const params = new URLSearchParams({
+      fields: 'id,name,mimeType',
+      supportsAllDrives: 'true',
+    });
+    const fr = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!fr.ok) {
+      const body = await fr.text().catch(() => '');
+      return res.status(400).json({ ok: false, error: `无法访问文件夹 (${fr.status})：${body.slice(0, 200)}` });
+    }
+    const folder = await fr.json();
+    // 数一下（根层）音频文件数量
+    const q = new URLSearchParams({
+      q: `'${id.replace(/'/g, "\\'")}' in parents and trashed = false`,
+      fields: 'nextPageToken,files(id,name,mimeType)',
+      pageSize: '1000',
+      supportsAllDrives: 'true',
+      includeItemsFromAllDrives: 'true',
+    });
+    const lr = await fetch(`https://www.googleapis.com/drive/v3/files?${q}`, { headers: { Authorization: `Bearer ${token}` } });
+    let count = 0;
+    if (lr.ok) {
+      const data = await lr.json();
+      count = (data.files || []).filter((f) => f.mimeType?.startsWith('audio/') || /\.(mp3|m4a|aac|flac|ogg|opus|wav)$/i.test(f.name || '')).length;
+    }
+    res.json({ ok: true, name: folder.name, files: count });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
+  }
+}));
 
 app.post('/api/unlock', express.json(), (req, res) => {
   const code = String(req.body?.code || '').trim();
@@ -63,21 +161,28 @@ const CACHE_TTL = 60 * 1000;
 
 async function loadTracks(force = false) {
   if (!force && cache.tracks.length && Date.now() - cache.at < CACHE_TTL) return cache.tracks;
-  const raw = await provider.listTracks();
-  const enriched = await Promise.all(
-    raw.map(async (t) => {
-      const cached = await getTrackMeta(t, provider).catch(() => null);
+  const prov = currentProvider();
+  const raw = await prov.listTracks();
+  // 并发限制：避免大曲库首刷瞬间打满 Drive API 配额
+  const CONCURRENCY = Number(process.env.META_CONCURRENCY || 6);
+  const enriched = [];
+  let cursor = 0;
+  async function worker() {
+    while (cursor < raw.length) {
+      const t = raw[cursor++];
+      const cached = await getTrackMeta(t, prov).catch(() => null);
       const fallback = guessFromName(t.name);
-      return {
+      enriched.push({
         ...t,
         title: cached?.title || fallback.title,
         artist: cached?.artist || fallback.artist,
         album: cached?.album || '',
         duration: cached?.duration || 0,
         hasCover: Boolean(cached?.hasCover),
-      };
-    })
-  );
+      });
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, raw.length || 1) }, worker));
   enriched.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN', { numeric: true }));
   cache = { at: Date.now(), tracks: enriched };
   return enriched;
@@ -96,7 +201,7 @@ app.get('/api/tracks/:id/meta', wrap(async (req, res) => {
   const tracks = await loadTracks();
   const track = tracks.find((t) => t.id === req.params.id);
   if (!track) return res.status(404).json({ error: '曲目不存在' });
-  const meta = await getTrackMeta(track, provider);
+  const meta = await getTrackMeta(track, currentProvider());
   res.json(meta);
 }));
 
@@ -112,13 +217,14 @@ app.get('/api/tracks/:id/cover', wrap(async (req, res) => {
 
 app.get('/api/stream/:id', wrap(async (req, res) => {
   const { id } = req.params;
-  const info = await provider.getFileInfo(id);
+  const prov = currentProvider();
+  const info = await prov.getFileInfo(id);
   if (!info) return res.status(404).json({ error: '音频不存在' });
 
   const range = req.headers.range;
   let upstream;
   try {
-    upstream = await provider.openMedia(id, range);
+    upstream = await prov.openMedia(id, range);
   } catch (err) {
     return res.status(502).json({ error: `上游读取失败：${err.message}` });
   }
@@ -128,6 +234,10 @@ app.get('/api/stream/:id', wrap(async (req, res) => {
     return res
       .status(upstream.status === 404 ? 404 : 502)
       .json({ error: `无法读取音频 (${upstream.status})`, detail: detail.slice(0, 300) });
+  }
+
+  if (upstream.status === 403) {
+    return res.status(502).json({ error: '上游拒绝访问（403）：请确认文件夹已共享给服务账号' });
   }
 
   res.status(upstream.status);
@@ -152,7 +262,7 @@ app.get('/api/stream/:id', wrap(async (req, res) => {
 
 /* ---------------- 静态资源 ---------------- */
 
-app.get('/healthz', (req, res) => res.json({ ok: true, demo: config.demo }));
+app.get('/healthz', (req, res) => res.json({ ok: true, demo: config.demo, version: VERSION, configSource }));
 
 app.use(express.static(path.join(ROOT, 'public'), {
   extensions: ['html'],
@@ -182,7 +292,7 @@ app.listen(config.port, config.host, () => {
   console.log('');
   console.log(describeConfig());
   if (config.demo) {
-    console.log('\n  提示：在 .env 里填好服务账号密钥与 DRIVE_FOLDER_ID 后重启，即切换到 Google Drive 曲库。');
+    console.log('\n  提示：打开网页右上角「设置」，粘贴服务账号 JSON 与文件夹 ID 即可接入 Google Drive（无需重启）。');
   } else if (config.serviceAccountEmail) {
     console.log(`\n  ⚠ 记得把音乐文件夹共享给服务账号：${config.serviceAccountEmail}（查看者权限）`);
   }

@@ -7,6 +7,11 @@ const AUDIO_EXT = /\.(mp3|m4a|m4b|aac|flac|ogg|oga|opus|wav|wma|aiff|aif|alac|we
 
 let authClient = null;
 
+/** 网页保存新凭证后调用，强制下次请求重建 auth 客户端 */
+export function resetAuth() {
+  authClient = null;
+}
+
 async function getAuth() {
   if (authClient) return authClient;
   if (!config.credentials) throw new Error('未配置 Google 服务账号凭证');
@@ -29,7 +34,7 @@ async function getToken() {
 async function apiFetch(url, { retry = true } = {}) {
   const token = await getToken();
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (res.status === 401 && retry) {
+  if ((res.status === 401 || res.status === 403) && retry) {
     authClient = null; // 令牌失效，重新建一个客户端再试一次
     return apiFetch(url, { retry: false });
   }

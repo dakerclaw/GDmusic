@@ -49,6 +49,12 @@ async function init() {
     state.demo = cfg.demo;
     $('#mode-badge').hidden = !cfg.demo;
 
+    // 演示模式：显示设置入口引导
+    if (cfg.demo && cfg.configSource !== 'env') {
+      $('#setup-banner').hidden = false;
+      $('#setup-banner').addEventListener('click', () => $('#btn-setup').click());
+    }
+
     if (cfg.accessRequired) {
       const saved = localStorage.getItem('cm_code');
       if (saved) {
@@ -555,6 +561,73 @@ $('#gate-submit').addEventListener('click', async () => {
 
 $('#gate-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') $('#gate-submit').click();
+});
+
+/* ---------- 设置（先安装后配置） ---------- */
+function showSetup() {
+  $('#setup').hidden = false;
+  fetch('/api/setup/status', { headers: { 'x-access-code': localStorage.getItem('cm_code') || '' } })
+    .then((r) => r.json())
+    .then((s) => {
+      $('#setup-folders').value = (s.folderIds || []).join(', ');
+      $('#setup-recursive').checked = s.recursive !== false;
+      $('#setup-status').hidden = !s.serviceAccountEmail;
+      if (s.serviceAccountEmail) {
+        $('#setup-status').textContent = `当前服务账号：${s.serviceAccountEmail}；已配 ${s.folderIds.length} 个文件夹。留空 JSON 表示不修改密钥。`;
+        $('#setup-sa-state').textContent = '已配置（留空则不修改）';
+      } else {
+        $('#setup-sa-state').textContent = '未配置';
+        $('#setup-sa-state').classList.add('warn');
+      }
+    });
+}
+
+function hideSetup() { $('#setup').hidden = true; }
+
+$('#btn-setup').addEventListener('click', showSetup);
+$('#setup-close').addEventListener('click', hideSetup);
+
+$('#setup-test').addEventListener('click', async () => {
+  const sa = $('#setup-sa').value.trim();
+  const folderId = $('#setup-folders').value.split(',')[0]?.trim();
+  if (!folderId) return toast('请先填写文件夹 ID');
+  toast('正在测试…');
+  try {
+    const res = await fetch('/api/setup/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-access-code': localStorage.getItem('cm_code') || '' },
+      body: JSON.stringify({ serviceAccountJson: sa || undefined, folderId }),
+    });
+    const data = await res.json();
+    if (data.ok) toast(`✓ ${data.name}（根层 ${data.files} 个音频）`);
+    else toast(data.error || '测试失败');
+  } catch (err) { toast(err.message); }
+});
+
+$('#setup-save').addEventListener('click', async () => {
+  const sa = $('#setup-sa').value.trim();
+  const folderIds = $('#setup-folders').value;
+  const btn = $('#setup-save');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-access-code': localStorage.getItem('cm_code') || '' },
+      body: JSON.stringify({ serviceAccountJson: sa || undefined, folderIds, recursive: $('#setup-recursive').checked }),
+    });
+    const data = await res.json();
+    if (!data.ok) { toast(data.error || '保存失败'); return; }
+    toast('已保存，正在重新加载曲库…');
+    $('#setup-sa').value = '';
+    hideSetup();
+    $('#mode-badge').hidden = !data.demo;
+    await loadTracks(true);
+    toast(`已连接，共 ${state.tracks.length} 首`);
+  } catch (err) {
+    toast(err.message || '保存失败');
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 /* ---------- 工具 ---------- */

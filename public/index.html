@@ -44,6 +44,9 @@
       <span class="badge" id="mode-badge" hidden>演示</span>
     </div>
     <div class="top-actions">
+      <button class="icon-btn" id="btn-setup" title="设置" aria-label="设置">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
       <button class="icon-btn" id="btn-refresh" title="重新扫描曲库" aria-label="重新扫描曲库">
         <svg><use href="#i-refresh"/></svg>
       </button>
@@ -51,6 +54,7 @@
   </header>
 
   <main class="stage">
+    <button class="setup-banner" id="setup-banner" hidden>⚙ 当前是演示模式 — 点此连接你的 Google Drive</button>
     <div class="cover-shell" id="cover-shell">
       <div class="cover" id="cover">
         <div class="cover-fallback"><svg><use href="#i-music"/></svg></div>
@@ -127,6 +131,27 @@
     <input type="password" id="gate-input" placeholder="访问口令" autocomplete="current-password">
     <button class="primary" id="gate-submit">进入</button>
     <p class="gate-error" id="gate-error" hidden></p>
+  </div>
+</div>
+
+<div class="modal" id="setup" hidden>
+  <div class="modal-card setup-card">
+    <h2>连接 Google Drive</h2>
+    <p class="setup-hint" id="setup-hint">粘贴服务账号 JSON 密钥与音乐文件夹 ID，保存后立即生效（无需重启）。</p>
+    <div class="setup-status" id="setup-status" hidden></div>
+    <label class="setup-label">服务账号 JSON 密钥 <span id="setup-sa-state" class="setup-state"></span></label>
+    <textarea id="setup-sa" rows="5" placeholder='{"type":"service_account","project_id":"...", ...}' spellcheck="false"></textarea>
+    <label class="setup-label">音乐文件夹 ID（多个用逗号分隔）</label>
+    <input type="text" id="setup-folders" placeholder="1AbC..." spellcheck="false">
+    <label class="setup-check"><input type="checkbox" id="setup-recursive" checked> 递归扫描子文件夹</label>
+    <label class="setup-label">访问口令（留空 = 不启用）</label>
+    <input type="text" id="setup-code" placeholder="不启用" autocomplete="off">
+    <div class="setup-actions">
+      <button class="ghost" id="setup-test">测试文件夹</button>
+      <button class="primary" id="setup-save">保存并连接</button>
+      <button class="ghost" id="setup-close">关闭</button>
+    </div>
+    <p class="setup-note">密钥只保存在服务器 data/keys/（权限 600）。记得把文件夹共享给服务账号邮箱（查看者）。</p>
   </div>
 </div>
 

@@ -386,3 +386,40 @@ input[type="range"]::-moz-range-thumb {
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* ---------- 设置（先安装后配置） ---------- */
+.setup-banner {
+  width: 100%;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border: 1px solid rgba(120, 160, 255, .35);
+  border-radius: 12px;
+  background: rgba(90, 130, 255, .12);
+  color: #bcd0ff;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+.setup-banner:hover { background: rgba(90, 130, 255, .2); }
+
+.setup-card { max-width: 460px; width: calc(100vw - 40px); }
+.setup-hint { font-size: 13px; opacity: .65; margin-bottom: 12px; }
+.setup-status {
+  font-size: 12.5px; color: #8fd49f; margin-bottom: 10px;
+  padding: 8px 10px; border-radius: 8px; background: rgba(90, 200, 130, .1);
+}
+.setup-label { display: block; font-size: 12.5px; opacity: .75; margin: 10px 0 5px; }
+.setup-state { font-size: 11.5px; opacity: .8; }
+.setup-state.warn { color: #f0c674; }
+#setup-sa, #setup-folders, #setup-code {
+  width: 100%; box-sizing: border-box;
+  padding: 9px 11px; border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: rgba(255, 255, 255, .06); color: inherit;
+  font-size: 13px; font-family: ui-monospace, monospace;
+}
+#setup-sa { resize: vertical; min-height: 80px; }
+.setup-check { display: flex; align-items: center; gap: 7px; font-size: 13px; margin-top: 10px; cursor: pointer; }
+.setup-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.setup-actions .primary { flex: 1; }
+.setup-note { font-size: 11.5px; opacity: .5; margin-top: 12px; line-height: 1.5; }
