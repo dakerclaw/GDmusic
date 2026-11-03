@@ -72,12 +72,12 @@ async function init() {
     if (state.gate) return showGate();
 
     await loadTracks();
-    restoreSession();
     bindEvents();
     bindKeyboard();
     bindTouch();
     bindMediaSession();
     setupWakeLock();
+    restoreSession();
   } catch (err) {
     toast(err.message || '初始化失败，请刷新重试');
   }
@@ -146,6 +146,8 @@ function renderList(filter = '') {
 }
 
 /* ---------- 播放逻辑 ---------- */
+let switching = false; // 切歌瞬间抑制旧 audio 的 error 误报
+
 function playId(id) {
   const idx = state.tracks.findIndex((t) => t.id === id);
   if (idx !== -1) playIndex(idx);
@@ -327,7 +329,6 @@ function bindEvents() {
   audio.addEventListener('playing', () => { state.loading = false; updatePlayBtn(); clearLoadTimeout(); });
   audio.addEventListener('ended', () => next(true));
   // 只对「已设置 src 且非空切换」报错；src 清空/替换瞬间的误报忽略
-  let switching = false;
   audio.addEventListener('error', () => {
     if (switching || !audio.src) return;
     state.loading = false;
@@ -555,8 +556,10 @@ function restoreSession() {
     if (s.trackId) {
       const idx = state.tracks.findIndex((t) => t.id === s.trackId);
       if (idx !== -1) {
-        playIndex(idx);
-        if (s.currentTime) audio.currentTime = s.currentTime;
+        // 只恢复选中与封面，不自动起播（浏览器会拦自动播放，且避免误触流请求）
+        state.index = idx;
+        updateMeta();
+        renderList($('#search').value);
       }
     }
   } catch {}
