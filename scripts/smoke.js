@@ -4,7 +4,7 @@
  * config → (unlock) → tracks → meta → cover → stream(200) → stream(Range 206)
  * 用法：node scripts/smoke.js [baseUrl]
  */
-const BASE = process.argv[2] || 'http://localhost:8080';
+const BASE = process.argv[2] || 'http://localhost:9527';
 let pass = 0;
 let fail = 0;
 

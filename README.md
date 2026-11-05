@@ -17,7 +17,7 @@
 
 ```bash
 npm install
-npm start          # 打开 http://localhost:8080
+npm start          # 打开 http://localhost:9527
 ```
 
 没有配置任何凭证时会进入**演示模式**，播放 `demo-music/` 里的示例曲目（可用 `scripts/make-demo-audio.py` 重新生成）。

@@ -144,7 +144,7 @@ export function saveRuntimeConfig({ serviceAccountJson, folderIds, accessCode, r
 }
 
 export const config = {
-  port: Number(process.env.PORT || 8080),
+  port: Number(process.env.PORT || 9527),
   host: process.env.HOST || '0.0.0.0',
   dataDir: DATA_DIR,
   cacheDir: path.join(ROOT, process.env.CACHE_DIR || '.cache'),
