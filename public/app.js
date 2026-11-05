@@ -124,8 +124,8 @@ function renderList(filter = '') {
     }
     byFolder.get(key).tracks.push(t);
   }
-  // 只有一个分组时不显示分组头，观感与原列表一致
-  const showHeaders = groups.length > 1;
+  // 始终显示分组头（即使只有一个分组，也标明歌曲所属文件夹）
+  const showHeaders = true;
 
   const trackHtml = (t) => {
     const on = t.id === activeId;
