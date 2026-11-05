@@ -4,6 +4,7 @@
 ================================ */
 
 :root {
+  color-scheme: dark;
   --bg-0: #08080c;
   --bg-1: #111118;
   --bg-2: #1a1a24;
@@ -22,6 +23,11 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* 让原生控件跟随暗色主题（滚动条、勾选框、自动填充等） */
+[hidden] { display: none !important; }
+button, input, textarea, select { font-family: inherit; }
+button { -webkit-appearance: none; appearance: none; }
 
 html, body {
   height: 100dvh;
@@ -414,51 +420,156 @@ input[type="range"]::-moz-range-thumb {
   font-size: 12.5px; color: #8fd49f; margin-bottom: 10px;
   padding: 8px 10px; border-radius: 8px; background: rgba(90, 200, 130, .1);
 }
-.setup-label { display: block; font-size: 12.5px; opacity: .75; margin: 10px 0 5px; }
-.setup-state { font-size: 11.5px; opacity: .8; }
+.setup-label { display: block; font-size: 12px; font-weight: 600; letter-spacing: .2px; color: rgba(242,242,247,.72); margin: 12px 0 6px; }
+.setup-state { font-size: 11.5px; font-weight: 400; opacity: .8; }
 .setup-state.warn { color: #f0c674; }
-#setup-sa, #setup-folders, #setup-code {
-  width: 100%; box-sizing: border-box;
-  padding: 9px 11px; border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, .14);
-  background: rgba(255, 255, 255, .06); color: inherit;
-  font-size: 13px; font-family: ui-monospace, monospace;
-}
-#setup-sa { resize: vertical; min-height: 80px; }
-.setup-check { display: flex; align-items: center; gap: 7px; font-size: 13px; margin-top: 10px; cursor: pointer; }
-.setup-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.setup-check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: 12px; cursor: pointer; user-select: none; }
+.setup-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
 .setup-actions .primary { flex: 1; }
 .setup-note { font-size: 11.5px; opacity: .5; margin-top: 12px; line-height: 1.5; }
 
-/* 多组配置 */
-.setup-card { max-height: 88dvh; overflow-y: auto; }
-.setup-accounts { margin-top: 6px; }
+/* ---------- 多组配置 ---------- */
+.setup-card {
+  max-height: min(88dvh, 780px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 24px 20px 22px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, .18) transparent;
+}
+.setup-card::-webkit-scrollbar { width: 8px; }
+.setup-card::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .16); border-radius: 8px; }
+.setup-card::-webkit-scrollbar-track { background: transparent; }
+.setup-accounts { margin-top: 4px; }
 .acc-row {
   border: 1px solid rgba(255, 255, 255, .1);
-  background: rgba(255, 255, 255, .03);
-  border-radius: 12px;
-  padding: 10px 12px 12px;
-  margin: 10px 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .022));
+  border-radius: 14px;
+  padding: 12px 13px 14px;
+  margin: 12px 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
 }
-.acc-head { display: flex; align-items: center; justify-content: space-between; }
-.acc-index { font-size: 12.5px; font-weight: 600; opacity: .8; }
+.acc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+.acc-index {
+  font-size: 12px; font-weight: 700; letter-spacing: .4px;
+  color: var(--accent-1);
+}
 .acc-del {
-  border: 1px solid rgba(244, 114, 182, .35);
+  border: 1px solid rgba(244, 114, 182, .32);
   background: rgba(244, 114, 182, .1);
   color: #f6a8c8;
   font-size: 12px;
-  border-radius: 8px;
-  padding: 3px 9px;
+  border-radius: 999px;
+  padding: 4px 11px;
   cursor: pointer;
+  transition: background .18s, border-color .18s;
 }
-.acc-del:hover { background: rgba(244, 114, 182, .2); }
-.acc-row input, .acc-row textarea {
-  width: 100%; box-sizing: border-box;
-  padding: 9px 11px; border-radius: 10px;
+.acc-del:hover { background: rgba(244, 114, 182, .2); border-color: rgba(244, 114, 182, .5); }
+.acc-row textarea { resize: vertical; min-height: 68px; }
+.acc-test { width: 100%; margin-top: 10px; font-size: 12.5px; padding: 8px 12px; border-radius: 10px; }
+.setup-add {
+  width: 100%;
+  margin-top: 12px;
+  border: 1px dashed rgba(167, 139, 250, .45);
+  background: rgba(167, 139, 250, .08);
+  color: #d8c7ff;
+  font-size: 13.5px;
+  padding: 11px 14px;
+}
+.setup-add:hover { background: rgba(167, 139, 250, .16); border-color: rgba(167, 139, 250, .7); }
+
+/* ---------- 表单控件统一：深色玻璃 + 圆角 ---------- */
+.modal-card input[type="text"],
+.modal-card input[type="password"],
+.modal-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 13px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, .14);
-  background: rgba(255, 255, 255, .06); color: inherit;
-  font-size: 13px; font-family: ui-monospace, monospace;
+  background: rgba(255, 255, 255, .06);
+  color: var(--text);
+  font-size: 13.5px;
+  line-height: 1.5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  outline: none;
+  transition: background .18s, border-color .18s, box-shadow .18s;
 }
-.acc-row textarea { resize: vertical; min-height: 64px; }
-.acc-test { margin-top: 9px; font-size: 12px; padding: 5px 10px; }
-.setup-add { margin-top: 10px; font-size: 13px; }
+#setup-code { font-family: inherit; }
+.modal-card input::placeholder,
+.modal-card textarea::placeholder { color: rgba(242, 242, 247, .32); }
+.modal-card input[type="text"]:hover,
+.modal-card input[type="password"]:hover,
+.modal-card textarea:hover { background: rgba(255, 255, 255, .085); }
+.modal-card input[type="text"]:focus,
+.modal-card input[type="password"]:focus,
+.modal-card textarea:focus {
+  border-color: rgba(167, 139, 250, .65);
+  background: rgba(167, 139, 250, .08);
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, .16);
+}
+
+/* 次级按钮（此前没有样式，会显示成白底黑字的系统方块） */
+.ghost {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: rgba(255, 255, 255, .06);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background .18s, border-color .18s, transform .12s;
+}
+.ghost:hover { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .24); }
+.ghost:active { transform: scale(.98); background: rgba(255, 255, 255, .16); }
+.ghost:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(167, 139, 250, .28); }
+
+/* 主按钮 */
+.modal-card .primary {
+  font-family: inherit;
+  min-height: 46px;
+  box-shadow: 0 8px 22px rgba(192, 132, 252, .28);
+}
+.modal-card .primary:hover { filter: brightness(1.06); }
+.modal-card .primary:disabled { opacity: .6; cursor: default; filter: none; }
+
+/* 勾选框 */
+.setup-check input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 0 0 auto;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  background: rgba(255, 255, 255, .06);
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.setup-check input[type="checkbox"]:checked {
+  background: linear-gradient(135deg, var(--accent-2), var(--accent-1));
+  border-color: transparent;
+}
+.setup-check input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 2.5px;
+  width: 4.5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
