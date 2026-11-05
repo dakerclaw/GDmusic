@@ -12,7 +12,7 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<link rel="stylesheet" href="/style.css?v=1.1.22">
+<link rel="stylesheet" href="/style.css?v=1.1.23">
 </head>
 <body>
 
@@ -126,9 +126,9 @@
 <div class="modal" id="gate" hidden>
   <div class="modal-card">
     <h2>需要访问口令</h2>
-    <p>这个音乐站点设置了访问口令，请输入后继续。</p>
+    <p>设置页已启用访问口令，输入后即可修改配置。</p>
     <input type="password" id="gate-input" placeholder="访问口令" autocomplete="current-password">
-    <button class="primary" id="gate-submit">进入</button>
+    <button class="primary" id="gate-submit">进入设置</button>
     <p class="gate-error" id="gate-error" hidden></p>
   </div>
 </div>
@@ -136,26 +136,24 @@
 <div class="modal" id="setup" hidden>
   <div class="modal-card setup-card">
     <h2>连接 Google Drive</h2>
-    <p class="setup-hint" id="setup-hint">粘贴服务账号 JSON 密钥与音乐文件夹 ID，保存后立即生效（无需重启）。</p>
+    <p class="setup-hint" id="setup-hint">每组配置 = 服务账号 + JSON 密钥 + 文件夹 ID。可添加多组，保存后立即生效（无需重启）。</p>
     <div class="setup-status" id="setup-status" hidden></div>
-    <label class="setup-label">服务账号 JSON 密钥 <span id="setup-sa-state" class="setup-state"></span></label>
-    <textarea id="setup-sa" rows="5" placeholder='{"type":"service_account","project_id":"...", ...}' spellcheck="false"></textarea>
-    <label class="setup-label">音乐文件夹 ID（多个用逗号分隔）</label>
-    <input type="text" id="setup-folders" placeholder="1AbC..." spellcheck="false">
+    <div class="setup-accounts" id="setup-accounts"></div>
+    <button class="ghost setup-add" id="setup-add" type="button">+ 新增一组配置</button>
     <label class="setup-check"><input type="checkbox" id="setup-recursive" checked> 递归扫描子文件夹</label>
-    <label class="setup-label">访问口令（留空 = 不启用）</label>
+    <label class="setup-label">设置访问口令（留空 = 不启用；仅保护本设置页）</label>
     <input type="text" id="setup-code" placeholder="不启用" autocomplete="off">
+    <label class="setup-check" id="setup-code-clear-row" hidden><input type="checkbox" id="setup-code-clear"> 清除已设置的访问口令</label>
     <div class="setup-actions">
-      <button class="ghost" id="setup-test">测试文件夹</button>
       <button class="primary" id="setup-save">保存并连接</button>
       <button class="ghost" id="setup-close">关闭</button>
     </div>
-    <p class="setup-note">密钥只保存在服务器 data/keys/（权限 600）。记得把文件夹共享给服务账号邮箱（查看者）。</p>
+    <p class="setup-note">密钥只保存在服务器 data/keys/（权限 600）。记得把每个文件夹共享给对应服务账号邮箱（查看者）。</p>
   </div>
 </div>
 
 <audio id="audio" preload="metadata" playsinline></audio>
 
-<script src="/app.js?v=1.1.22" type="module"></script>
+<script src="/app.js?v=1.1.23" type="module"></script>
 </body>
 </html>

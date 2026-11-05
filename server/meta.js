@@ -71,7 +71,7 @@ async function parseOne(track, provider) {
   };
 
   try {
-    const head = await provider.readHead(track.id, 1536 * 1024);
+    const head = await provider.readHead(track.id, 1536 * 1024, track.accountId);
     if (!head || head.length < 128) return result;
 
     const meta = await parseBuffer(head, {

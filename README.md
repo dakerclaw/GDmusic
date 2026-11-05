@@ -10,7 +10,7 @@
 - 📻 锁屏 / 通知栏控制（MediaSession API）、屏幕常亮
 - 🔀 随机播放、列表循环、单曲循环
 - 🔍 搜索、上次播放位置记忆、PWA 可添加到主屏幕
-- 🔐 可选访问口令，公网部署不裸奔
+- 🔐 可选访问口令，仅保护设置页（听歌不需要口令）
 - 🧪 未配置凭证时自动进入演示模式（本地示例曲目，先把界面跑起来）
 
 ## 快速开始
@@ -52,11 +52,15 @@ GOOGLE_SERVICE_ACCOUNT_JSON_BASE64=<密钥JSON的base64>
 # 生成方法：certutil -encode service-account.json out.txt  取中间段
 # 或 PowerShell: [Convert]::ToBase64String([IO.File]::ReadAllBytes("service-account.json"))
 DRIVE_FOLDER_ID=<文件夹ID>
-# 公网部署建议加访问口令
+# 可选：设置页访问口令（只锁设置，不影响听歌）
 ACCESS_CODE=你的口令
 ```
 
 重启 `npm start`，看到 `运行模式：Google Drive` 即成功。
+
+### 在网页里配置（推荐，支持多组账号）
+
+打开网页右上角 ⚙ 设置：每一行是一组配置（服务账号 / JSON 密钥 / 文件夹 ID），可新增、删除多组，可分别测试连通性；保存后立即生效，无需重启。旧版的 `data/config.json` + `keys/sa.json` 会自动迁移成第一组。
 
 > 💡 Windows 下把密钥转 Base64：
 > ```powershell
@@ -65,7 +69,7 @@ ACCESS_CODE=你的口令
 
 ## 手机上用
 
-手机和电脑连同一个 Wi-Fi，浏览器打开启动时打印的局域网地址（如 `http://192.168.1.5:8080`）。Safari / Chrome 里「添加到主屏幕」后就是一个全屏 App。注意手机浏览器要求 `localhost` 之外必须 HTTPS 才允许自动播放 —— 首次点一下播放按钮即可。
+手机和电脑连同一个 Wi-Fi，浏览器打开启动时打印的局域网地址（如 `http://192.168.1.5:9527`）。Safari / Chrome 里「添加到主屏幕」后就是一个全屏 App。注意手机浏览器要求 `localhost` 之外必须 HTTPS 才允许自动播放 —— 首次点一下播放按钮即可。
 
 ## API 一览
 
@@ -74,8 +78,11 @@ ACCESS_CODE=你的口令
 | `GET /api/tracks?refresh=1` | 曲库列表（自动解析标签，60s 缓存） |
 | `GET /api/tracks/:id/meta` | 单曲详细标签 |
 | `GET /api/tracks/:id/cover` | 内嵌封面图 |
-| `GET /api/stream/:id` | 音频流（支持 Range / 206） |
-| `POST /api/unlock` | 访问口令验证 |
+| `GET /api/stream/:id?acc=<accountId>` | 音频流（支持 Range / 206） |
+| `GET /api/setup/status` | 读取配置（设置口令保护） |
+| `POST /api/setup` | 保存多组配置（设置口令保护） |
+| `POST /api/setup/test` | 测试某组文件夹连通性（设置口令保护） |
+| `POST /api/unlock` | 设置页口令验证 |
 | `GET /healthz` | 健康检查 |
 
 ## 部署

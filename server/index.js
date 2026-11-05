@@ -2,7 +2,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import express from 'express';
 import compression from 'compression';
-import { config, ROOT, describeConfig, saveRuntimeConfig, configSource, envDriven } from './config.js';
+import { config, ROOT, describeConfig, saveRuntimeConfig, configSource, envDriven, computeDemo, parseServiceAccount } from './config.js';
 import * as drive from './drive.js';
 import * as local from './local.js';
 import { getTrackMeta, getCoverFile, guessFromName } from './meta.js';
@@ -27,7 +27,7 @@ app.use(compression({
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-const VERSION = '1.1.22';
+const VERSION = '1.1.23';
 
 function parseCookies(header = '') {
   const out = {};
@@ -38,14 +38,20 @@ function parseCookies(header = '') {
   return out;
 }
 
-/* ---------------- 访问口令 ---------------- */
+/* ---------------- 访问口令（只保护设置页，不影响听歌） ---------------- */
+
+function requireSettingsCode(req, res, next) {
+  if (!config.accessCode) return next();
+  const supplied = req.get('x-access-code') || parseCookies(req.headers.cookie).mc_code || req.query.code;
+  if (supplied === config.accessCode) return next();
+  res.status(401).json({ error: '需要访问口令', needCode: true });
+}
 
 app.get('/api/config', (req, res) => {
   res.json({
     demo: config.demo,
-    accessRequired: Boolean(config.accessCode),
-    serviceAccountEmail: config.serviceAccountEmail,
-    folders: config.folderIds.length,
+    settingsLocked: Boolean(config.accessCode),
+    accountCount: config.accounts.filter((a) => a.credentials && a.folderIds?.length).length,
     recursive: config.recursive,
     configSource,
     envDriven,
@@ -54,52 +60,56 @@ app.get('/api/config', (req, res) => {
 
 /* ---------------- 网页设置（先安装后配置） ---------------- */
 
-app.get('/api/setup/status', (req, res) => {
+app.get('/api/setup/status', requireSettingsCode, (req, res) => {
   res.json({
     configured: !config.demo,
     configSource,
-    serviceAccountEmail: config.serviceAccountEmail,
-    folderIds: config.folderIds,
     recursive: config.recursive,
     accessRequired: Boolean(config.accessCode),
+    accounts: config.accounts.map((a) => ({
+      id: a.id,
+      email: a.email || '',
+      folderIds: a.folderIds || [],
+      recursive: a.recursive !== false,
+      hasKey: Boolean(a.credentials),
+    })),
     hint: config.demo
       ? '当前为演示模式。填入服务账号 JSON 与音乐文件夹 ID 即可接入 Google Drive。'
       : null,
   });
 });
 
-app.post('/api/setup', express.json({ limit: '1mb' }), wrap(async (req, res) => {
-  const { serviceAccountJson, folderIds, accessCode, recursive } = req.body || {};
-  // 首次配置（当前无凭证无文件夹）：SA 必填
-  if (!config.credentials && !serviceAccountJson && !config.folderIds.length) {
-    return res.status(400).json({ ok: false, error: '请粘贴服务账号 JSON 密钥' });
-  }
+app.post('/api/setup', requireSettingsCode, express.json({ limit: '2mb' }), wrap(async (req, res) => {
+  const { accounts, serviceAccountJson, folderIds, accessCode, recursive } = req.body || {};
   try {
-    const changed = saveRuntimeConfig({
-      serviceAccountJson: serviceAccountJson ?? null,
-      folderIds,
-      accessCode,
-      recursive,
-    });
-    if (changed.credentials || changed.folderIds) {
+    const changed = saveRuntimeConfig({ accounts, serviceAccountJson, folderIds, accessCode, recursive });
+    if (changed.accounts) {
       drive.resetAuth();
       cache = { at: 0, tracks: [] }; // 清曲库缓存，下次请求重建（元数据按文件 ID 键控，无需清）
     }
-    config.demo = !config.credentials || config.folderIds.length === 0;
-    res.json({ ok: true, demo: config.demo, serviceAccountEmail: config.serviceAccountEmail, folderIds: config.folderIds });
+    config.demo = computeDemo();
+    res.json({
+      ok: true,
+      demo: config.demo,
+      settingsLocked: Boolean(config.accessCode),
+      accounts: config.accounts.map((a) => ({ id: a.id, email: a.email, folderIds: a.folderIds })),
+    });
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message });
   }
 }));
 
 /** 测试文件夹连通性（不保存）：返回文件夹名与文件数 */
-app.post('/api/setup/test', express.json({ limit: '1mb' }), wrap(async (req, res) => {
-  const { serviceAccountJson, folderId } = req.body || {};
+app.post('/api/setup/test', requireSettingsCode, express.json({ limit: '1mb' }), wrap(async (req, res) => {
+  const { serviceAccountJson, folderId, accountId } = req.body || {};
   try {
-    let credentials = config.credentials;
-    if (serviceAccountJson) {
-      const { parseServiceAccount } = await import('./config.js');
+    let credentials = null;
+    if (serviceAccountJson && String(serviceAccountJson).trim()) {
       credentials = parseServiceAccount(serviceAccountJson);
+    } else if (accountId) {
+      credentials = config.accounts.find((a) => a.id === accountId)?.credentials || null;
+    } else {
+      credentials = config.accounts.find((a) => a.credentials)?.credentials || null;
     }
     if (!credentials) return res.status(400).json({ ok: false, error: '缺少服务账号凭证' });
     const id = String(folderId || '').trim();
@@ -152,13 +162,6 @@ app.post('/api/unlock', express.json(), (req, res) => {
     `mc_code=${encodeURIComponent(code)}; Path=/; Max-Age=2592000; SameSite=Lax; HttpOnly`
   );
   res.json({ ok: true });
-});
-
-app.use('/api', (req, res, next) => {
-  if (!config.accessCode) return next();
-  const supplied = req.get('x-access-code') || parseCookies(req.headers.cookie).mc_code || req.query.code;
-  if (supplied === config.accessCode) return next();
-  res.status(401).json({ error: '需要访问口令', needCode: true });
 });
 
 /* ---------------- 曲库 ---------------- */
@@ -243,7 +246,7 @@ function clampRange(rangeHeader, size) {
 app.get('/api/stream/:id', wrap(async (req, res) => {
   const { id } = req.params;
   const prov = currentProvider();
-  const info = await prov.getFileInfo(id);
+  const info = await prov.getFileInfo(id, req.query.acc);
   if (!info) return res.status(404).json({ error: '音频不存在' });
 
   const size = info.size || 0;
@@ -266,7 +269,7 @@ app.get('/api/stream/:id', wrap(async (req, res) => {
 
   let upstream;
   try {
-    upstream = await prov.openMedia(id, upstreamRange);
+    upstream = await prov.openMedia(id, upstreamRange, req.query.acc);
   } catch (err) {
     console.error(`[stream] ${id} 上游打开失败:`, err.message);
     return res.status(502).json({ error: `上游读取失败：${err.message}` });

@@ -12,8 +12,8 @@ const state = {
   loading: false,
   shuffle: false,
   repeat: 'off', // 'off' | 'one' | 'all'
-  gate: false,
   demo: true,
+  settingsLocked: false,
   wakeLock: null,
 };
 
@@ -30,17 +30,11 @@ async function api(path, opts = {}) {
   if (saved) headers['x-access-code'] = saved;
 
   const res = await fetch(url, { method: opts.method || 'GET', headers, body });
-  if (res.status === 401) {
-    const data = await res.json().catch(() => ({}));
-    if (data.needCode) {
-      state.gate = true;
-      showGate();
-      throw new Error('需要访问口令');
-    }
-  }
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || `请求失败 (${res.status})`);
+    const err = new Error(data.error || `请求失败 (${res.status})`);
+    if (res.status === 401 && data.needCode) err.needCode = true;
+    throw err;
   }
   if (res.status === 204) return null;
   return res.json();
@@ -59,17 +53,8 @@ async function init() {
       $('#setup-banner').addEventListener('click', () => $('#btn-setup').click());
     }
 
-    if (cfg.accessRequired) {
-      const saved = localStorage.getItem('cm_code');
-      if (saved) {
-        try { await api('/unlock', { method: 'POST', body: { code: saved } }); }
-        catch { state.gate = true; }
-      } else {
-        state.gate = true;
-      }
-    }
-
-    if (state.gate) return showGate();
+    // 口令只保护设置页；听歌不需要口令，直接加载曲库
+    state.settingsLocked = Boolean(cfg.settingsLocked);
 
     await loadTracks();
     bindEvents();
@@ -168,7 +153,7 @@ function playIndex(idx) {
   audio.load();
   setTimeout(() => { switching = false; }, 50);
 
-  const url = `/api/stream/${track.id}`;
+  const url = `/api/stream/${track.id}${track.accountId ? `?acc=${encodeURIComponent(track.accountId)}` : ''}`;
   audio.src = url;
   audio.load();
   armLoadTimeout();
@@ -587,10 +572,12 @@ function restoreSession() {
   } catch {}
 }
 
-/* ---------- 口令 ---------- */
+/* ---------- 口令（仅保护设置页） ---------- */
 function showGate() {
   $('#gate').hidden = false;
-  $('#gate-input').focus();
+  $('#gate-error').hidden = true;
+  $('#gate-input').value = '';
+  setTimeout(() => $('#gate-input').focus(), 30);
 }
 
 /* ---------- 加载超时兜底：流挂起时 spinner 不该永远转 ---------- */
@@ -647,10 +634,9 @@ $('#gate-submit').addEventListener('click', async () => {
     await api('/unlock', { method: 'POST', body: { code } });
     localStorage.setItem('cm_code', code);
     $('#gate').hidden = true;
-    state.gate = false;
+    state.settingsLocked = true;
     toast('验证成功');
-    await loadTracks();
-    restoreSession();
+    showSetup();
   } catch (err) {
     $('#gate-error').hidden = false;
     $('#gate-error').textContent = err.message || '口令不正确';
@@ -661,67 +647,165 @@ $('#gate-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') $('#gate-submit').click();
 });
 
-/* ---------- 设置（先安装后配置） ---------- */
-function showSetup() {
-  $('#setup').hidden = false;
-  fetch('/api/setup/status', { headers: { 'x-access-code': localStorage.getItem('cm_code') || '' } })
-    .then((r) => r.json())
-    .then((s) => {
-      $('#setup-folders').value = (s.folderIds || []).join(', ');
-      $('#setup-recursive').checked = s.recursive !== false;
-      $('#setup-code').placeholder = s.accessRequired ? '已启用（留空则不修改）' : '不启用';
-      $('#setup-status').hidden = !s.serviceAccountEmail;
-      if (s.serviceAccountEmail) {
-        $('#setup-status').textContent = `当前服务账号：${s.serviceAccountEmail}；已配 ${s.folderIds.length} 个文件夹。留空 JSON 表示不修改密钥。`;
-        $('#setup-sa-state').textContent = '已配置（留空则不修改）';
-      } else {
-        $('#setup-sa-state').textContent = '未配置';
-        $('#setup-sa-state').classList.add('warn');
-      }
+/* ---------- 设置（先安装后配置，多组配置） ---------- */
+function openSettings() {
+  if (!state.settingsLocked) return showSetup();
+  const saved = localStorage.getItem('cm_code') || '';
+  if (!saved) return showGate();
+  api('/unlock', { method: 'POST', body: { code: saved } })
+    .then(() => showSetup())
+    .catch(() => {
+      localStorage.removeItem('cm_code');
+      showGate();
     });
+}
+
+async function showSetup() {
+  $('#setup').hidden = false;
+  $('#setup-accounts').innerHTML = '';
+  $('#setup-status').hidden = true;
+  try {
+    const s = await api('/setup/status');
+    state.settingsLocked = Boolean(s.accessRequired);
+    renderAccountRows(s.accounts || []);
+    $('#setup-recursive').checked = s.recursive !== false;
+    $('#setup-code').value = '';
+    $('#setup-code-clear').checked = false;
+    $('#setup-code-clear-row').hidden = !s.accessRequired;
+    $('#setup-code').placeholder = s.accessRequired ? '已启用（留空则不修改）' : '不启用';
+    if (s.accounts?.length) {
+      $('#setup-status').hidden = false;
+      $('#setup-status').textContent = `当前已配置 ${s.accounts.length} 组；已配置的组留空 JSON 表示不修改密钥。`;
+    }
+  } catch (err) {
+    if (err.needCode) {
+      $('#setup').hidden = true;
+      localStorage.removeItem('cm_code');
+      state.settingsLocked = true;
+      return showGate();
+    }
+    toast(err.message || '读取设置失败');
+  }
+}
+
+const parseFolderIds = (value) => String(value || '').split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
+
+function accountRowHtml(acc, index) {
+  const hasKey = Boolean(acc.hasKey);
+  return `
+    <div class="acc-row" data-id="${esc(acc.id || '')}">
+      <div class="acc-head">
+        <span class="acc-index">配置 ${index + 1}</span>
+        <button class="acc-del" type="button" title="删除这组配置">删除</button>
+      </div>
+      <label class="setup-label">服务账号</label>
+      <input class="acc-email" type="text" value="${esc(acc.email || '')}" placeholder="粘贴 JSON 后自动识别" spellcheck="false">
+      <label class="setup-label">JSON 密钥 <span class="acc-state ${hasKey ? '' : 'warn'}">${hasKey ? '已配置（留空则不修改）' : '未配置'}</span></label>
+      <textarea class="acc-json" rows="3" placeholder='{"type":"service_account", ...}' spellcheck="false"></textarea>
+      <label class="setup-label">文件夹 ID（多个用逗号分隔）</label>
+      <input class="acc-folders" type="text" value="${esc((acc.folderIds || []).join(', '))}" placeholder="1AbC..., 2DeF..." spellcheck="false">
+      <button class="acc-test ghost" type="button">测试这组文件夹</button>
+    </div>`;
+}
+
+function renderAccountRows(accounts) {
+  const host = $('#setup-accounts');
+  const list = accounts.length ? accounts : [{}];
+  host.innerHTML = list.map(accountRowHtml).join('');
+  bindAccountRows();
+}
+
+function addAccountRow() {
+  const host = $('#setup-accounts');
+  host.insertAdjacentHTML('beforeend', accountRowHtml({}, host.children.length));
+  bindAccountRows();
+}
+
+function reindexAccounts() {
+  $$('.acc-row').forEach((row, i) => {
+    row.querySelector('.acc-index').textContent = `配置 ${i + 1}`;
+  });
+}
+
+function bindAccountRows() {
+  reindexAccounts();
+  $$('.acc-row').forEach((row) => {
+    if (row.dataset.bound) return;
+    row.dataset.bound = '1';
+    row.querySelector('.acc-del').addEventListener('click', () => {
+      row.remove();
+      if (!$('.acc-row')) addAccountRow();
+      reindexAccounts();
+    });
+    row.querySelector('.acc-json').addEventListener('input', () => {
+      const text = row.querySelector('.acc-json').value.trim();
+      if (!text) return;
+      try {
+        const data = JSON.parse(text);
+        if (data.client_email) {
+          row.querySelector('.acc-email').value = data.client_email;
+          const stateEl = row.querySelector('.acc-state');
+          stateEl.textContent = '待保存';
+          stateEl.classList.remove('warn');
+        }
+      } catch { /* 还没粘完整，忽略 */ }
+    });
+    row.querySelector('.acc-test').addEventListener('click', () => testAccountRow(row));
+  });
+}
+
+async function testAccountRow(row) {
+  const sa = row.querySelector('.acc-json').value.trim();
+  const folderId = parseFolderIds(row.querySelector('.acc-folders').value)[0];
+  if (!folderId) return toast('请先填写这组的文件夹 ID');
+  toast('正在测试…');
+  try {
+    const data = await api('/setup/test', {
+      method: 'POST',
+      body: {
+        serviceAccountJson: sa || undefined,
+        folderId,
+        accountId: row.dataset.id || undefined,
+      },
+    });
+    toast(`✓ ${data.name}（根层 ${data.files} 个音频）`);
+  } catch (err) {
+    if (err.needCode) return openSettings();
+    toast(err.message || '测试失败');
+  }
 }
 
 function hideSetup() { $('#setup').hidden = true; }
 
-$('#btn-setup').addEventListener('click', showSetup);
+$('#btn-setup').addEventListener('click', openSettings);
 $('#setup-close').addEventListener('click', hideSetup);
-
-$('#setup-test').addEventListener('click', async () => {
-  const sa = $('#setup-sa').value.trim();
-  const folderId = $('#setup-folders').value.split(',')[0]?.trim();
-  if (!folderId) return toast('请先填写文件夹 ID');
-  toast('正在测试…');
-  try {
-    const res = await fetch('/api/setup/test', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-access-code': localStorage.getItem('cm_code') || '' },
-      body: JSON.stringify({ serviceAccountJson: sa || undefined, folderId }),
-    });
-    const data = await res.json();
-    if (data.ok) toast(`✓ ${data.name}（根层 ${data.files} 个音频）`);
-    else toast(data.error || '测试失败');
-  } catch (err) { toast(err.message); }
-});
+$('#setup-add').addEventListener('click', addAccountRow);
 
 $('#setup-save').addEventListener('click', async () => {
-  const sa = $('#setup-sa').value.trim();
-  const folderIds = $('#setup-folders').value;
-  const accessCode = $('#setup-code').value.trim();
+  const accounts = $$('.acc-row').map((row) => ({
+    id: row.dataset.id || undefined,
+    serviceAccountJson: row.querySelector('.acc-json').value.trim() || undefined,
+    folderIds: row.querySelector('.acc-folders').value,
+  }));
+  // 口令框：有输入 = 设置新口令；勾选清除 = 删除；原本已启用且留空 = 不修改
+  const codeInput = $('#setup-code').value.trim();
+  let accessCode;
+  if (codeInput) accessCode = codeInput;
+  else if ($('#setup-code-clear').checked) accessCode = '';
+  else if (!state.settingsLocked) accessCode = '';
+  else accessCode = undefined;
+
   const btn = $('#setup-save');
   btn.disabled = true;
   try {
-    const res = await fetch('/api/setup', {
+    const data = await api('/setup', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-access-code': localStorage.getItem('cm_code') || '' },
-      body: JSON.stringify({ serviceAccountJson: sa || undefined, folderIds, accessCode, recursive: $('#setup-recursive').checked }),
+      body: { accounts, accessCode, recursive: $('#setup-recursive').checked },
     });
-    const data = await res.json();
-    if (!data.ok) { toast(data.error || '保存失败'); return; }
-    toast('已保存，正在重新加载曲库…');
-    $('#setup-sa').value = '';
-    $('#setup-code').value = '';
-    // 口令刚启用/变更：本机直接解锁，避免被自己挡在门外
     if (accessCode) localStorage.setItem('cm_code', accessCode);
+    if (accessCode === '') localStorage.removeItem('cm_code');
+    state.settingsLocked = Boolean(data.settingsLocked);
+    toast('已保存，正在重新加载曲库…');
     hideSetup();
     $('#mode-badge').hidden = !data.demo;
     try {
@@ -731,6 +815,12 @@ $('#setup-save').addEventListener('click', async () => {
       toast(`已保存，但曲库加载失败：${loadErr.message}`);
     }
   } catch (err) {
+    if (err.needCode) {
+      hideSetup();
+      localStorage.removeItem('cm_code');
+      state.settingsLocked = true;
+      return showGate();
+    }
     toast(err.message || '保存失败');
   } finally {
     btn.disabled = false;

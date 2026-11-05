@@ -5,38 +5,49 @@ const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const AUDIO_EXT = /\.(mp3|m4a|m4b|aac|flac|ogg|oga|opus|wav|wma|aiff|aif|alac|weba|webm)$/i;
 
-let authClient = null;
+/** 每个服务账号一个 auth client，key = account.id */
+const authClients = new Map();
 
 /** 网页保存新凭证后调用，强制下次请求重建 auth 客户端 */
 export function resetAuth() {
-  authClient = null;
+  authClients.clear();
 }
 
-async function getAuth() {
-  if (authClient) return authClient;
-  if (!config.credentials) throw new Error('未配置 Google 服务账号凭证');
+/** 可用账号：有密钥且有文件夹 */
+function usableAccounts() {
+  return (config.accounts || []).filter((a) => a?.credentials && a?.folderIds?.length);
+}
+
+function accountById(id) {
+  return (config.accounts || []).find((a) => a.id === id) || null;
+}
+
+async function getAuth(account) {
+  if (authClients.has(account.id)) return authClients.get(account.id);
+  if (!account?.credentials) throw new Error('未配置 Google 服务账号凭证');
   const auth = new GoogleAuth({
-    credentials: config.credentials,
+    credentials: account.credentials,
     scopes: ['https://www.googleapis.com/auth/drive.readonly'],
   });
-  authClient = await auth.getClient();
-  return authClient;
+  const client = await auth.getClient();
+  authClients.set(account.id, client);
+  return client;
 }
 
-async function getToken() {
-  const client = await getAuth();
+async function getToken(account) {
+  const client = await getAuth(account);
   const res = await client.getAccessToken();
   const token = typeof res === 'string' ? res : res?.token;
   if (!token) throw new Error('无法获取 Google 访问令牌');
   return token;
 }
 
-async function apiFetch(url, { retry = true } = {}) {
-  const token = await getToken();
+async function apiFetch(url, account, { retry = true } = {}) {
+  const token = await getToken(account);
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if ((res.status === 401 || res.status === 403) && retry) {
-    authClient = null; // 令牌失效，重新建一个客户端再试一次
-    return apiFetch(url, { retry: false });
+    authClients.delete(account.id); // 令牌失效，重新建一个客户端再试一次
+    return apiFetch(url, account, { retry: false });
   }
   return res;
 }
@@ -76,7 +87,7 @@ export function browserMime(name, mimeType) {
 }
 
 /** 列出某个文件夹下的直接子项（文件 + 子文件夹） */
-async function listChildren(folderId) {
+async function listChildren(folderId, account) {
   const items = [];
   let pageToken = '';
   const fields = 'nextPageToken,files(id,name,mimeType,size,modifiedTime,parents,shortcutDetails)';
@@ -92,7 +103,7 @@ async function listChildren(folderId) {
     });
     if (pageToken) params.set('pageToken', pageToken);
 
-    const res = await apiFetch(`${DRIVE_API}/files?${params}`);
+    const res = await apiFetch(`${DRIVE_API}/files?${params}`, account);
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       throw new Error(`Drive 列表请求失败 (${res.status})：${body.slice(0, 300)}`);
@@ -105,59 +116,85 @@ async function listChildren(folderId) {
   return items;
 }
 
-/** 递归收集所有音频文件 */
+/** 递归收集所有账号的音频文件（按文件 ID 去重） */
 export async function listTracks() {
+  const accounts = usableAccounts();
+  if (!accounts.length) throw new Error('未配置 Google 服务账号或音乐文件夹');
+
   const found = [];
   const errors = [];
-  const seenFolders = new Set();
-  const queue = config.folderIds.map((id) => ({ id, depth: 0, path: '' }));
+  const seenFiles = new Set();
 
-  while (queue.length) {
-    const { id, depth, path } = queue.shift();
-    if (seenFolders.has(id)) continue;
-    seenFolders.add(id);
+  for (const account of accounts) {
+    const seenFolders = new Set();
+    const queue = account.folderIds.map((id) => ({ id, depth: 0, path: '' }));
+    const accountErrors = [];
+    const recursive = account.recursive !== false && config.recursive !== false;
 
-    let children;
-    try {
-      children = await listChildren(id);
-    } catch (err) {
-      if (depth === 0) errors.push(`根文件夹 ${id}：${err.message}`);
-      else console.warn(`[drive] 跳过子目录 ${id}：${err.message}`);
-      continue;
-    }
+    while (queue.length) {
+      const { id, depth, path } = queue.shift();
+      if (seenFolders.has(id)) continue;
+      seenFolders.add(id);
 
-    for (const file of children) {
-      if (file.mimeType === FOLDER_MIME) {
-        if (config.recursive && depth + 1 < config.maxDepth) {
-          queue.push({ id: file.id, depth: depth + 1, path: path ? `${path}/${file.name}` : file.name });
+      let children;
+      try {
+        children = await listChildren(id, account);
+      } catch (err) {
+        if (depth === 0) accountErrors.push(`${account.email || account.id} 根文件夹 ${id}：${err.message}`);
+        else console.warn(`[drive] 跳过子目录 ${id}：${err.message}`);
+        continue;
+      }
+
+      for (const file of children) {
+        if (file.mimeType === FOLDER_MIME) {
+          if (recursive && depth + 1 < config.maxDepth) {
+            queue.push({ id: file.id, depth: depth + 1, path: path ? `${path}/${file.name}` : file.name });
+          }
+        } else if (isAudioFile(file) && !seenFiles.has(file.id)) {
+          seenFiles.add(file.id);
+          found.push({
+            id: file.id,
+            name: file.name,
+            size: Number(file.size || 0),
+            mimeType: file.mimeType,
+            modifiedTime: file.modifiedTime,
+            folder: path || null,
+            accountId: account.id,
+            accountEmail: account.email || null,
+          });
         }
-      } else if (isAudioFile(file)) {
-        found.push({
-          id: file.id,
-          name: file.name,
-          size: Number(file.size || 0),
-          mimeType: file.mimeType,
-          modifiedTime: file.modifiedTime,
-          folder: path || null,
-        });
       }
     }
+
+    errors.push(...accountErrors);
   }
 
   if (!found.length && errors.length) {
     throw new Error(errors.join('；'));
   }
+  if (errors.length) console.warn('[drive] 部分文件夹读取失败：', errors.join('；'));
 
   return found;
 }
 
+/** 解析请求对应的账号：优先 URL 里的 acc，其次第一个可用账号 */
+function resolveAccount(accountId) {
+  if (accountId) {
+    const account = accountById(String(accountId));
+    if (account?.credentials && account.folderIds?.length) return account;
+  }
+  return usableAccounts()[0] || null;
+}
+
 /** 读取单个文件的元数据（含大小，用于 Range 计算） */
-export async function getFileInfo(fileId) {
+export async function getFileInfo(fileId, accountId) {
+  const account = resolveAccount(accountId);
+  if (!account) throw new Error('未配置 Google 服务账号');
   const params = new URLSearchParams({
     fields: 'id,name,mimeType,size,modifiedTime',
     supportsAllDrives: 'true',
   });
-  const res = await apiFetch(`${DRIVE_API}/files/${encodeURIComponent(fileId)}?${params}`);
+  const res = await apiFetch(`${DRIVE_API}/files/${encodeURIComponent(fileId)}?${params}`, account);
   if (res.status === 404) return null;
   if (!res.ok) {
     const body = await res.text().catch(() => '');
@@ -174,8 +211,10 @@ export async function getFileInfo(fileId) {
 }
 
 /** 打开音频流，透传 Range 以便拖动进度条；429/5xx 自动重试一次 */
-export async function openMedia(fileId, range) {
-  const token = await getToken();
+export async function openMedia(fileId, range, accountId) {
+  const account = resolveAccount(accountId);
+  if (!account) throw new Error('未配置 Google 服务账号');
+  const token = await getToken(account);
   const url = `${DRIVE_API}/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`;
   const headers = { Authorization: `Bearer ${token}` };
   if (range) headers.Range = range;
@@ -198,8 +237,8 @@ export async function openMedia(fileId, range) {
 }
 
 /** 读取文件开头若干字节，用于解析 ID3 标签和内嵌封面 */
-export async function readHead(fileId, bytes = 1536 * 1024) {
-  const res = await openMedia(fileId, `bytes=0-${bytes - 1}`);
+export async function readHead(fileId, bytes = 1536 * 1024, accountId) {
+  const res = await openMedia(fileId, `bytes=0-${bytes - 1}`, accountId);
   if (!res.ok && res.status !== 206) return null;
   const buf = Buffer.from(await res.arrayBuffer());
   return buf;
