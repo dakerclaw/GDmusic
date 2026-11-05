@@ -16,6 +16,8 @@ const state = {
   settingsLocked: false,
   /** 设置页口令：只存在内存里，关闭设置即清空（不写 localStorage / Cookie） */
   settingsCode: '',
+  /** 播放列表里被折叠的文件夹（内存态，刷新恢复全部展开） */
+  collapsedFolders: new Set(),
   wakeLock: null,
 };
 
@@ -110,25 +112,55 @@ function renderList(filter = '') {
 
   const activeId = state.index >= 0 ? state.tracks[state.index]?.id : null;
 
-  $('#list').innerHTML = items
-    .map((t) => {
-      const on = t.id === activeId;
-      const dur = formatTime(t.duration || 0);
-      const cover = t.hasCover ? `/api/tracks/${t.id}/cover` : '';
-      const thumb = cover
-        ? `<img src="${cover}" alt="" loading="lazy" onerror="this.parentElement.querySelector('svg').style.display='block';this.style.display='none'">`
-        : '';
-      const svg = `<svg style="display:${cover ? 'none' : 'block'}"><use href="#i-music"/></svg>`;
+  // 按文件夹分组（保持曲库原有顺序）
+  const groups = [];
+  const byFolder = new Map();
+  for (const t of items) {
+    const key = t.folder || '';
+    if (!byFolder.has(key)) {
+      const g = { key, tracks: [] };
+      byFolder.set(key, g);
+      groups.push(g);
+    }
+    byFolder.get(key).tracks.push(t);
+  }
+  // 只有一个分组时不显示分组头，观感与原列表一致
+  const showHeaders = groups.length > 1;
 
-      return `
+  const trackHtml = (t) => {
+    const on = t.id === activeId;
+    const dur = formatTime(t.duration || 0);
+    const cover = t.hasCover ? `/api/tracks/${t.id}/cover` : '';
+    const thumb = cover
+      ? `<img src="${cover}" alt="" loading="lazy" onerror="this.parentElement.querySelector('svg').style.display='block';this.style.display='none'">`
+      : '';
+    const svg = `<svg style="display:${cover ? 'none' : 'block'}"><use href="#i-music"/></svg>`;
+
+    return `
       <li class="${on ? 'on' : ''}" data-id="${t.id}">
         <div class="list-thumb">${thumb}${svg}</div>
         <div class="list-info">
           <div class="list-name">${esc(t.title || t.name)}</div>
-          <div class="list-artist">${esc(t.artist || '未知歌手')}</div>
+          <div class="list-artist">${esc(t.artist || '未知歌手')}${t.folder ? `<span class="list-folder"> · ${esc(t.folder)}</span>` : ''}</div>
         </div>
         <div class="list-time">${on ? `<div class="playing-bar"><span></span><span></span><span></span></div>` : dur}</div>
       </li>`;
+  };
+
+  $('#list').innerHTML = groups
+    .map((g) => {
+      // 搜索时不折叠，保证命中项全部可见
+      const closed = showHeaders && !term && state.collapsedFolders.has(g.key);
+      const head = showHeaders
+        ? `
+      <li class="group-head${closed ? ' closed' : ''}" data-group="${esc(g.key)}" role="button" aria-expanded="${closed ? 'false' : 'true'}">
+        <svg class="group-icon"><use href="#i-folder"/></svg>
+        <span class="group-name">${esc(g.key || '未分类')}</span>
+        <span class="group-count">${g.tracks.length} 首</span>
+        <svg class="group-chevron"><use href="#i-chevron"/></svg>
+      </li>`
+        : '';
+      return head + (closed ? '' : g.tracks.map(trackHtml).join(''));
     })
     .join('');
 }
@@ -406,6 +438,14 @@ function bindEvents() {
 
   // 列表点击（事件委托）
   $('#list').addEventListener('click', (e) => {
+    const head = e.target.closest('li.group-head');
+    if (head) {
+      const key = head.dataset.group;
+      if (state.collapsedFolders.has(key)) state.collapsedFolders.delete(key);
+      else state.collapsedFolders.add(key);
+      renderList($('#search').value);
+      return;
+    }
     const li = e.target.closest('li[data-id]');
     if (!li) return;
     playId(li.dataset.id);

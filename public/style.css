@@ -298,6 +298,38 @@ input[type="range"]::-moz-range-thumb {
 
 .list li.on .list-name { color: var(--accent-1); }
 
+/* 文件夹分组 */
+.list li.group-head {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 10px 7px; min-height: 0;
+  cursor: pointer; user-select: none;
+  border-radius: 10px;
+}
+.list li.group-head:hover { background: transparent; }
+.group-icon {
+  flex: none; width: 17px; height: 17px; fill: var(--accent-1); opacity: .85;
+}
+.group-name {
+  flex: 1; min-width: 0;
+  font-size: 12.5px; font-weight: 700; letter-spacing: .3px;
+  color: var(--accent-1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.group-count { flex: none; font-size: 11px; color: var(--dim); }
+.group-chevron {
+  flex: none; width: 13px; height: 13px;
+  fill: var(--dim);
+  transition: transform .2s ease;
+}
+.list li.group-head.closed .group-chevron { transform: rotate(90deg); }
+.list li.group-head + .list li,
+.list li.group-head.closed { margin-bottom: 2px; }
+/* 分组头与上一首歌之间留一点空隙 */
+.list li:not(.group-head):has(+ .group-head) { margin-bottom: 6px; }
+
+/* 歌手后缀的文件夹名（仅单曲展示时） */
+.list-folder { color: var(--dim); }
+
 /* 播放指示条 */
 .playing-bar { display: flex; align-items: flex-end; gap: 2px; height: 14px; }
 .playing-bar span {

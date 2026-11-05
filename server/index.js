@@ -27,7 +27,7 @@ app.use(compression({
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-const VERSION = '1.1.25';
+const VERSION = '1.1.26';
 
 /* ---------------- 访问口令（只保护设置页，不影响听歌） ---------------- */
 
