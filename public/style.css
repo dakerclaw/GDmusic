@@ -426,6 +426,8 @@ input[type="range"]::-moz-range-thumb {
 .setup-check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: 12px; cursor: pointer; user-select: none; }
 .setup-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
 .setup-actions .primary { flex: 1; }
+.gate-actions { margin-top: 4px; }
+.gate-actions .ghost { flex: 0 0 auto; min-width: 88px; }
 .setup-note { font-size: 11.5px; opacity: .5; margin-top: 12px; line-height: 1.5; }
 
 /* ---------- 多组配置 ---------- */

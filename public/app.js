@@ -14,6 +14,8 @@ const state = {
   repeat: 'off', // 'off' | 'one' | 'all'
   demo: true,
   settingsLocked: false,
+  /** 设置页口令：只存在内存里，关闭设置即清空（不写 localStorage / Cookie） */
+  settingsCode: '',
   wakeLock: null,
 };
 
@@ -26,8 +28,7 @@ async function api(path, opts = {}) {
   const url = path.startsWith('/api/') ? path : `/api${path}`;
   const body = opts.body ? JSON.stringify(opts.body) : undefined;
   const headers = { Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}) };
-  const saved = localStorage.getItem('cm_code');
-  if (saved) headers['x-access-code'] = saved;
+  if (state.settingsCode) headers['x-access-code'] = state.settingsCode;
 
   const res = await fetch(url, { method: opts.method || 'GET', headers, body });
   if (!res.ok) {
@@ -42,6 +43,8 @@ async function api(path, opts = {}) {
 
 /* ---------- 初始化 ---------- */
 async function init() {
+  // 旧版本把口令存在 localStorage 里；这里主动清掉，避免浏览器残留自动解锁
+  try { localStorage.removeItem('cm_code'); } catch { /* 隐私模式可能不可用 */ }
   try {
     const cfg = await api('/config');
     state.demo = cfg.demo;
@@ -606,10 +609,7 @@ function clearLoadTimeout() {
 async function probeStreamError(src) {
   let msg = '播放失败：无法读取音频';
   try {
-    const saved = localStorage.getItem('cm_code');
-    const res = await fetch(src, {
-      headers: { Range: 'bytes=0-1', ...(saved ? { 'x-access-code': saved } : {}) },
-    });
+    const res = await fetch(src, { headers: { Range: 'bytes=0-1' } });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       msg = `播放失败 (${res.status})：${data.error || res.statusText}`;
@@ -632,7 +632,8 @@ $('#gate-submit').addEventListener('click', async () => {
   if (!code) return;
   try {
     await api('/unlock', { method: 'POST', body: { code } });
-    localStorage.setItem('cm_code', code);
+    // 只存在内存里：关闭设置后自动失效，下次进入需重新输入
+    state.settingsCode = code;
     $('#gate').hidden = true;
     state.settingsLocked = true;
     toast('验证成功');
@@ -647,17 +648,19 @@ $('#gate-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') $('#gate-submit').click();
 });
 
+$('#gate-cancel').addEventListener('click', () => {
+  $('#gate').hidden = true;
+  $('#gate-input').value = '';
+  $('#gate-error').hidden = true;
+  state.settingsCode = '';
+});
+
 /* ---------- 设置（先安装后配置，多组配置） ---------- */
 function openSettings() {
   if (!state.settingsLocked) return showSetup();
-  const saved = localStorage.getItem('cm_code') || '';
-  if (!saved) return showGate();
-  api('/unlock', { method: 'POST', body: { code: saved } })
-    .then(() => showSetup())
-    .catch(() => {
-      localStorage.removeItem('cm_code');
-      showGate();
-    });
+  // 不做任何自动解锁：每次都重新输入口令（关闭设置时内存里的口令已清空）
+  state.settingsCode = '';
+  showGate();
 }
 
 async function showSetup() {
@@ -680,7 +683,7 @@ async function showSetup() {
   } catch (err) {
     if (err.needCode) {
       $('#setup').hidden = true;
-      localStorage.removeItem('cm_code');
+      state.settingsCode = '';
       state.settingsLocked = true;
       return showGate();
     }
@@ -775,7 +778,13 @@ async function testAccountRow(row) {
   }
 }
 
-function hideSetup() { $('#setup').hidden = true; }
+function hideSetup() {
+  $('#setup').hidden = true;
+  // 关闭设置即丢弃口令：下次点设置必须重新验证
+  state.settingsCode = '';
+  $('#gate-input').value = '';
+  $('#gate-error').hidden = true;
+}
 
 $('#btn-setup').addEventListener('click', openSettings);
 $('#setup-close').addEventListener('click', hideSetup);
@@ -802,8 +811,8 @@ $('#setup-save').addEventListener('click', async () => {
       method: 'POST',
       body: { accounts, accessCode, recursive: $('#setup-recursive').checked },
     });
-    if (accessCode) localStorage.setItem('cm_code', accessCode);
-    if (accessCode === '') localStorage.removeItem('cm_code');
+    if (accessCode) state.settingsCode = accessCode;
+    if (accessCode === '') state.settingsCode = '';
     state.settingsLocked = Boolean(data.settingsLocked);
     toast('已保存，正在重新加载曲库…');
     hideSetup();
@@ -817,7 +826,6 @@ $('#setup-save').addEventListener('click', async () => {
   } catch (err) {
     if (err.needCode) {
       hideSetup();
-      localStorage.removeItem('cm_code');
       state.settingsLocked = true;
       return showGate();
     }

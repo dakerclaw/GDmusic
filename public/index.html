@@ -12,7 +12,7 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<link rel="stylesheet" href="/style.css?v=1.1.24">
+<link rel="stylesheet" href="/style.css?v=1.1.25">
 </head>
 <body>
 
@@ -128,7 +128,10 @@
     <h2>需要访问口令</h2>
     <p>设置页已启用访问口令，输入后即可修改配置。</p>
     <input type="password" id="gate-input" placeholder="访问口令" autocomplete="current-password">
-    <button class="primary" id="gate-submit">进入设置</button>
+    <div class="setup-actions gate-actions">
+      <button class="primary" id="gate-submit">进入设置</button>
+      <button class="ghost" id="gate-cancel" type="button">取消</button>
+    </div>
     <p class="gate-error" id="gate-error" hidden></p>
   </div>
 </div>
@@ -154,6 +157,6 @@
 
 <audio id="audio" preload="metadata" playsinline></audio>
 
-<script src="/app.js?v=1.1.24" type="module"></script>
+<script src="/app.js?v=1.1.25" type="module"></script>
 </body>
 </html>

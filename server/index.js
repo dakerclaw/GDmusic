@@ -27,22 +27,14 @@ app.use(compression({
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-const VERSION = '1.1.24';
-
-function parseCookies(header = '') {
-  const out = {};
-  for (const part of header.split(';')) {
-    const idx = part.indexOf('=');
-    if (idx > -1) out[part.slice(0, idx).trim()] = decodeURIComponent(part.slice(idx + 1).trim());
-  }
-  return out;
-}
+const VERSION = '1.1.25';
 
 /* ---------------- 访问口令（只保护设置页，不影响听歌） ---------------- */
 
 function requireSettingsCode(req, res, next) {
   if (!config.accessCode) return next();
-  const supplied = req.get('x-access-code') || parseCookies(req.headers.cookie).mc_code || req.query.code;
+  // 只认本次请求携带的 header（前端仅保存在内存里）：不读 Cookie，关闭设置后必须重新输入
+  const supplied = req.get('x-access-code') || req.query.code;
   if (supplied === config.accessCode) return next();
   res.status(401).json({ error: '需要访问口令', needCode: true });
 }
@@ -157,10 +149,9 @@ app.post('/api/unlock', express.json(), (req, res) => {
   if (code !== config.accessCode) {
     return res.status(401).json({ ok: false, error: '口令不正确' });
   }
-  res.setHeader(
-    'Set-Cookie',
-    `mc_code=${encodeURIComponent(code)}; Path=/; Max-Age=2592000; SameSite=Lax; HttpOnly`
-  );
+  // 不签发持久凭证：验证只对当前这次打开设置有效（前端保存在内存，关闭即丢）
+  // 同时让旧版本留下的 mc_code Cookie 立即过期
+  res.setHeader('Set-Cookie', 'mc_code=; Path=/; Max-Age=0; SameSite=Lax; HttpOnly');
   res.json({ ok: true });
 });
 
