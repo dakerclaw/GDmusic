@@ -22,6 +22,74 @@ npm start          # 打开 http://localhost:9527
 
 没有配置任何凭证时会进入**演示模式**，播放 `demo-music/` 里的示例曲目（可用 `scripts/make-demo-audio.py` 重新生成）。
 
+
+## 服务器部署
+
+### Linux 一键部署（推荐）
+
+支持 Debian / Ubuntu / CentOS / Rocky / Alma 等（有 `apt` / `dnf` / `yum` 即可），需要 **root**。
+
+```bash
+# 方式一：直接跑（最短）
+curl -fsSL https://raw.githubusercontent.com/dakerclaw/GDmusic/main/install.sh | bash
+
+# 方式二：先下载再执行（更稳妥，可修改端口等参数）
+curl -fsSL -o install.sh https://raw.githubusercontent.com/dakerclaw/GDmusic/main/install.sh
+sudo bash install.sh
+```
+
+脚本会自动完成：
+
+1. 安装 `git` / `curl` 和 Node.js 22（若已有 18+ 则跳过）
+2. 拉取代码到 `/opt/gdmusic`（已存在则更新，**保留 `data/` 配置**）
+3. 安装生产依赖（`npm ci --omit=dev`）
+4. 写入并启动 systemd 服务 `gdmusic`（开机自启、异常自动重启）
+
+完成后会打印访问地址，形如 `http://服务器IP:9527`。
+
+**自定义参数**（可选，作为环境变量传入）：
+
+```bash
+sudo MC_PORT=9100 MC_INSTALL_DIR=/srv/gdmusic bash install.sh
+```
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `MC_PORT` | `9527` | 监听端口 |
+| `MC_INSTALL_DIR` | `/opt/gdmusic` | 安装目录（`data/` 密钥与配置也在这里） |
+
+**部署后**：浏览器打开 `http://服务器IP:9527`，点右上角 ⚙ 设置，粘贴服务账号 JSON 和音乐文件夹 ID 即可接入，无需再登录服务器。
+
+**常用运维命令**：
+
+```bash
+systemctl status gdmusic      # 查看状态
+systemctl restart gdmusic     # 重启
+journalctl -u gdmusic -f      # 实时日志
+curl -s localhost:9527/healthz   # 健康检查
+```
+
+**更新到最新版本**：
+
+```bash
+cd /opt/gdmusic && git pull --ff-only && systemctl restart gdmusic
+```
+
+> 配置与密钥保存在 `data/`（`config.json` 与 `keys/*.json`，权限 600），更新代码不会覆盖。
+> 从旧版升级：旧版单账号配置会自动迁移为多组配置的第一组，无需手动处理。
+
+### 其他平台
+
+任何能跑 Node 18+ 的平台都行（VPS / 树莓派 / 云函数容器 / Docker）：
+
+```bash
+npm ci --omit=dev
+PORT=9527 node server/index.js
+```
+
+数据目录可用 `DATA_DIR` 指定，默认在项目下的 `data/`。
+
+
 ## 接入 Google Drive（正式使用）
 
 ### 1. 创建服务账号
@@ -41,35 +109,10 @@ npm start          # 打开 http://localhost:9527
 
 ### 3. 配置并启动
 
-```bash
-cp .env.example .env
-```
+在网页里配置（支持多组账号）
 
-编辑 `.env`（三种凭证方式任选其一，推荐 Base64 避免换行转义问题）：
+打开网页右上角 ⚙ 设置：每一行是一组配置（服务账号 / JSON 密钥 / 文件夹 ID），可新增、删除多组，可分别测试连通性；保存后立即生效，无需重启。
 
-```ini
-GOOGLE_SERVICE_ACCOUNT_JSON_BASE64=<密钥JSON的base64>
-# 生成方法：certutil -encode service-account.json out.txt  取中间段
-# 或 PowerShell: [Convert]::ToBase64String([IO.File]::ReadAllBytes("service-account.json"))
-DRIVE_FOLDER_ID=<文件夹ID>
-# 可选：设置页访问口令（只锁设置，不影响听歌）
-ACCESS_CODE=你的口令
-```
-
-重启 `npm start`，看到 `运行模式：Google Drive` 即成功。
-
-### 在网页里配置（推荐，支持多组账号）
-
-打开网页右上角 ⚙ 设置：每一行是一组配置（服务账号 / JSON 密钥 / 文件夹 ID），可新增、删除多组，可分别测试连通性；保存后立即生效，无需重启。旧版的 `data/config.json` + `keys/sa.json` 会自动迁移成第一组。
-
-> 💡 Windows 下把密钥转 Base64：
-> ```powershell
-> [Convert]::ToBase64String([IO.File]::ReadAllBytes("D:\path\service-account.json")) | Set-Clipboard
-> ```
-
-## 手机上用
-
-手机和电脑连同一个 Wi-Fi，浏览器打开启动时打印的局域网地址（如 `http://192.168.1.5:9527`）。Safari / Chrome 里「添加到主屏幕」后就是一个全屏 App。注意手机浏览器要求 `localhost` 之外必须 HTTPS 才允许自动播放 —— 首次点一下播放按钮即可。
 
 ## API 一览
 
@@ -85,9 +128,6 @@ ACCESS_CODE=你的口令
 | `POST /api/unlock` | 设置页口令验证 |
 | `GET /healthz` | 健康检查 |
 
-## 部署
-
-任何能跑 Node 18+ 的平台都行（VPS / 树莓派 / 云函数容器）。把三个环境变量带上去即可，密钥不要提交进 git（`.env` 已在 `.gitignore`）。
 
 ## 目录结构
 
@@ -100,5 +140,6 @@ ACCESS_CODE=你的口令
 │   └── config.js   # 环境变量装配
 ├── public/         # 前端（原生 JS，无框架）
 ├── demo-music/     # 演示曲目
-└── scripts/        # 工具脚本
+├── scripts/        # 工具脚本
+└── install.sh      # Linux 一键部署脚本
 ```

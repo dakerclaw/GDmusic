@@ -1,5 +1,5 @@
 #!/bin/bash
-# GDmusic — 一键安装（零交互）
+# GDmusic — 一键部署（零交互）
 #
 # 安装完成后即为演示模式，打开网页右上角「设置」即可连接 Google Drive：
 #   - 粘贴 Service Account JSON 与音乐文件夹 ID，保存后立即生效（无需重启）
@@ -120,14 +120,14 @@ fi
 IP=$(curl -fss --max-time 4 https://api.ipify.org 2>/dev/null || echo "<服务器IP>")
 echo ""
 echo -e "${GREEN}${BOLD}──────────────────────────────────────────${NC}"
-echo -e "${GREEN} ✔ 安装完成！${NC}"
+echo -e "${GREEN} ✔ 部署完成！${NC}"
 echo ""
 echo -e "  访问地址： ${BOLD}http://${IP}:${PORT}${NC}"
 echo ""
 echo -e "  下一步（网页里完成，无需登录服务器）："
 echo -e "   1. 打开网页，点右上角 ⚙ 设置"
 echo -e "   2. 粘贴服务账号 JSON 与音乐文件夹 ID"
-echo -e "   3. 点「测试文件夹」确认，再「保存并连接」"
+echo -e "   3. 点「测试这组文件夹」确认，再「保存并连接」"
 echo -e "  常用命令："
 echo -e "   systemctl restart ${SERVICE_NAME}   # 重启"
 echo -e "   journalctl -u ${SERVICE_NAME} -f    # 日志"
